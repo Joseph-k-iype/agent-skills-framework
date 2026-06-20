@@ -1,0 +1,17 @@
+[project]
+name = "agent-skills-cli"
+version = "0.1.0"
+description = "CLI for building, validating, publishing, and installing enterprise agent skills"
+authors = [{ name = "Agent Skills Team" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+]
+license = { text = "MIT" }
+
+[project.scripts]
+skill = "main:main"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"

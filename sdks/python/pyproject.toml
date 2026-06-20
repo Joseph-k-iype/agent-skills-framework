@@ -1,0 +1,32 @@
+[project]
+name = "agent-skills-sdk"
+version = "0.1.0"
+description = "Enterprise Agent Skills SDK — build, validate, and publish agent skills for data management and governance"
+authors = [{ name = "Agent Skills Team" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+]
+license = { text = "MIT" }
+
+[project.urls]
+homepage = "https://github.com/myorg/agent-skills-framework"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["skill_sdk*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
