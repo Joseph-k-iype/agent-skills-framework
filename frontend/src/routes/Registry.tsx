@@ -6,14 +6,10 @@ import {
   GitBranch,
   Plus,
   RefreshCw,
-  Globe,
   Folder,
-  Trash2,
-  Link,
-  ExternalLink,
+  AlertCircle,
 } from 'lucide-react'
 import { api } from '../lib/api'
-import type { SourceConfig } from '../lib/types'
 
 export default function Registry() {
   const queryClient = useQueryClient()
@@ -223,10 +219,16 @@ export default function Registry() {
       </div>
 
       {syncMutation.data && (
-        <div className="card border-emerald-600/30">
-          <p className="text-sm text-emerald-400">
-            Synced {syncMutation.data.synced} skills from {syncMutation.data.skills?.length ?? 0} sources
+        <div className={`card ${syncMutation.data.errors?.length ? 'border-amber-600/30' : 'border-emerald-600/30'}`}>
+          <p className={`text-sm ${syncMutation.data.errors?.length ? 'text-amber-400' : 'text-emerald-400'}`}>
+            Synced {syncMutation.data.synced} {syncMutation.data.synced === 1 ? 'skill' : 'skills'} from{' '}
+            {sources?.length ?? 0} {(sources?.length ?? 0) === 1 ? 'source' : 'sources'}
           </p>
+          {syncMutation.data.errors?.map((err, i) => (
+            <p key={i} className="mt-1 flex items-center gap-1.5 text-xs text-amber-400">
+              <AlertCircle size={12} /> {err}
+            </p>
+          ))}
         </div>
       )}
     </div>

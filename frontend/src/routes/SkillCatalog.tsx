@@ -1,16 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Package, Search, Grid3X3, List } from 'lucide-react'
 import { api } from '../lib/api'
 import { shortHash, pluralize } from '../lib/utils'
 
 export default function SkillCatalog() {
   const [searchParams] = useSearchParams()
-  const initialQuery = searchParams.get('q') ?? ''
-  const [query, setQuery] = useState(initialQuery)
+  const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [view, setView] = useState<'grid' | 'list'>('grid')
-  const [runtimeFilter, setRuntimeFilter] = useState<string>('')
+
+  // Keep the input synced with the URL ?q=, so a repeat search from the TopBar
+  // while already on this page actually updates results (previously the initial
+  // value was read only once and later searches were ignored).
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '')
+  }, [searchParams])
 
   const { data: skills, isLoading } = useQuery({
     queryKey: ['skills'],
@@ -19,10 +24,9 @@ export default function SkillCatalog() {
 
   const entries = Object.entries(skills ?? {})
 
-  const filtered = entries.filter(([name, info]) => {
-    if (query && !name.toLowerCase().includes(query.toLowerCase())) return false
-    return true
-  })
+  const filtered = entries.filter(([name]) =>
+    !query || name.toLowerCase().includes(query.toLowerCase()),
+  )
 
   return (
     <div className="space-y-6">

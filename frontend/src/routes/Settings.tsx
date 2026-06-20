@@ -53,21 +53,24 @@ export default function Settings() {
           </h3>
           <div className="space-y-3">
             <div className="rounded-lg border border-gray-800 p-3">
-              <p className="text-sm text-gray-400">Path</p>
-              <p className="mt-1 text-sm font-mono text-gray-200">./registry</p>
-            </div>
-            <div className="rounded-lg border border-gray-800 p-3">
               <p className="text-sm text-gray-400">Index File</p>
               <p className="mt-1 text-sm font-mono text-gray-200">index.yaml</p>
             </div>
             <div className="rounded-lg border border-gray-800 p-3">
-              <p className="text-sm text-gray-400">Auto-tag on Publish</p>
-              <div className="mt-1 flex items-center gap-2">
-                <div className="h-5 w-10 rounded-full bg-brand-600 p-0.5 transition">
-                  <div className="h-4 w-4 rounded-full bg-white shadow" />
-                </div>
-                <span className="text-xs text-gray-500">Enabled</span>
-              </div>
+              <p className="text-sm text-gray-400">Workspace</p>
+              <p className="mt-1 text-sm font-mono text-gray-200 break-all">{info?.workspace ?? '...'}</p>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
+              <span className="text-sm text-gray-400">Auto-tag on Publish</span>
+              <span className={`badge ${info?.auto_tag ? 'bg-emerald-600/10 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                {info ? (info.auto_tag ? 'Enabled' : 'Disabled') : '...'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
+              <span className="text-sm text-gray-400">API Authentication</span>
+              <span className={`badge ${info?.auth_required ? 'bg-emerald-600/10 text-emerald-400' : 'bg-amber-600/10 text-amber-400'}`}>
+                {info ? (info.auth_required ? 'Required' : 'Open (dev)') : '...'}
+              </span>
             </div>
           </div>
         </div>
@@ -126,7 +129,14 @@ export default function Settings() {
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
             <User size={14} /> User Role
           </h3>
-          <p className="mb-4 text-sm text-gray-500">Switch role to preview permission-gated UI</p>
+          <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-600/10 p-3 text-xs text-amber-400">
+            <Shield size={14} className="mt-0.5 shrink-0" />
+            <span>
+              Client-side preview only. This switches which UI is permission-gated; it is
+              <strong> not</strong> an authorization boundary. Real authz is enforced server-side
+              via the API key — see SECURITY.md.
+            </span>
+          </div>
           <div className="space-y-2">
             {roleOptions.map((opt) => (
               <label

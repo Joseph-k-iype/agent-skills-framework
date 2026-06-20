@@ -9,3 +9,8 @@ dist/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Dashboard runtime artifacts
+/workspace/
+registry/.audit.jsonl
+frontend/.vite/

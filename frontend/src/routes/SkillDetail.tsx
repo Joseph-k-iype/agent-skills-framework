@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -69,7 +69,9 @@ export default function SkillDetail() {
   const { data: versions } = useQuery({
     queryKey: ['skill-versions', name],
     queryFn: () => api.skills.versions(name!),
-    enabled: !!name && (activeTab === 'versions'),
+    // Fetched eagerly (not just on the Versions tab) so the Install modal has
+    // the full, SemVer-ordered version list available immediately.
+    enabled: !!name,
   })
 
   const { data: validateRes } = useQuery({
@@ -131,7 +133,10 @@ export default function SkillDetail() {
   const [nodes, setNodes, onNodesChange] = useNodesState(depNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(depEdges)
 
-  useMemo(() => {
+  // Sync derived graph into React Flow state when dependencies change. This is a
+  // side effect, so it must be useEffect — doing it in useMemo updates state
+  // during render and triggers React's "cannot update while rendering" warning.
+  useEffect(() => {
     setNodes(depNodes)
     setEdges(depEdges)
   }, [depNodes, depEdges, setNodes, setEdges])

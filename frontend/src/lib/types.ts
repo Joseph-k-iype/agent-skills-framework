@@ -54,6 +54,55 @@ export interface RegistryInfo {
   schema_version: number
   sources: SourceConfig[]
   skill_count: number
+  auto_tag: boolean
+  workspace: string
+  auth_required: boolean
+}
+
+export interface SyncResult {
+  synced: number
+  skills: string[]
+  errors: string[]
+}
+
+export interface InstallResult {
+  success: boolean
+  name: string
+  version?: string
+  path: string
+}
+
+export interface ScaffoldRequest {
+  manifest: Partial<SkillManifest> & { name: string }
+  files?: Record<string, string>
+  publish?: boolean
+  force?: boolean
+}
+
+export interface ScaffoldResult {
+  success: boolean
+  name?: string
+  path?: string
+  published?: { id: string; version: string } | null
+  errors?: string[]
+  scaffolded?: boolean
+}
+
+export interface ComplianceRow {
+  name: string
+  latest: string
+  runtime: string
+  valid: boolean | null
+  permissions: number
+  capabilities: number
+  errors: string[]
+}
+
+export interface DeploymentsResponse {
+  targets: DeploymentTarget[]
+  total_skills: number
+  skills: Array<{ name: string; latest: string }>
+  last_sync: string | null
 }
 
 export interface SourceConfig {
@@ -114,19 +163,10 @@ export interface AuditEntry {
 export interface DeploymentTarget {
   name: string
   type: 'local' | 'git' | 'remote'
-  status: 'active' | 'inactive' | 'error'
-  skillCount: number
-  lastSync?: string
+  status: 'active' | 'inactive' | 'error' | 'configured'
+  skillCount: number | null
+  lastSync?: string | null
   url?: string
   path?: string
-}
-
-export interface GovernancePolicy {
-  id: string
-  name: string
-  description: string
-  status: 'pass' | 'fail' | 'warn' | 'unknown'
-  category: string
-  skillCount: number
-  passingCount: number
+  ref?: string
 }

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from skill_sdk.graph import FalkorDBConnector
+
+from ..security import require_api_key, resolve_in_workspace
 
 router = APIRouter()
 
@@ -36,14 +38,18 @@ async def test_connection(req: GraphConnectRequest):
     return {"connected": False, "host": req.host, "port": req.port}
 
 
-@router.post("/register")
+@router.post("/register", dependencies=[Depends(require_api_key)])
 async def register_skill(req: GraphRegisterRequest):
+    # Confine the manifest path to the workspace sandbox.
+    manifest_path = resolve_in_workspace(req.manifest_path)
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail=f"Manifest not found: {manifest_path}")
     graph = FalkorDBConnector(host=req.host, port=req.port, enabled=True)
     connected = await graph.connect()
     if not connected:
         raise HTTPException(status_code=503, detail="Could not connect to FalkorDB")
     try:
-        result = graph.register_skill(req.manifest_path)
+        result = graph.register_skill(str(manifest_path))
         graph.disconnect()
         return result
     except Exception as e:

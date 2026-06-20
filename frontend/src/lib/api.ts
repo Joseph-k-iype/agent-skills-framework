@@ -1,14 +1,39 @@
 const BASE = '/api'
 
+// Optional API key for hosted deployments (matches backend SKILLS_API_KEY).
+const API_KEY = import.meta.env.VITE_API_KEY as string | undefined
+
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+    this.name = 'ApiError'
+  }
+}
+
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(API_KEY ? { 'X-API-Key': API_KEY } : {}),
+      ...options?.headers,
+    },
   })
   if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`API ${res.status}: ${body}`)
+    // FastAPI errors are JSON `{detail: ...}`; fall back to raw text.
+    let detail = ''
+    const raw = await res.text()
+    try {
+      const parsed = JSON.parse(raw)
+      detail = typeof parsed.detail === 'string' ? parsed.detail : raw
+    } catch {
+      detail = raw
+    }
+    throw new ApiError(res.status, detail || `Request failed (${res.status})`)
   }
+  if (res.status === 204) return undefined as T
   return res.json()
 }
 
@@ -29,7 +54,7 @@ export const api = {
       return fetchJSON<import('./types').VerifyResult>(`/skills/${encodeURIComponent(name)}/verify${params}`, { method: 'POST' })
     },
     build: (path: string) =>
-      fetchJSON<{ success: boolean; name?: string; version?: string; id?: string; errors?: string[] }>('/skills/build', {
+      fetchJSON<{ success: boolean; name?: string; version?: string; id?: string; errors?: string[]; warnings?: string[] }>('/skills/build', {
         method: 'POST',
         body: JSON.stringify({ path }),
       }),
@@ -38,6 +63,25 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ path, force }),
       }),
+    install: (name: string, opts: { version?: string; target?: string; verify?: boolean } = {}) =>
+      fetchJSON<import('./types').InstallResult>(`/skills/${encodeURIComponent(name)}/install`, {
+        method: 'POST',
+        body: JSON.stringify({ verify: true, ...opts }),
+      }),
+    scaffold: (body: import('./types').ScaffoldRequest) =>
+      fetchJSON<import('./types').ScaffoldResult>('/skills/scaffold', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    compliance: () => fetchJSON<{ skills: import('./types').ComplianceRow[] }>('/skills/compliance'),
+  },
+
+  audit: {
+    list: (limit = 200) => fetchJSON<{ entries: import('./types').AuditEntry[] }>(`/audit?limit=${limit}`),
+  },
+
+  deployments: {
+    list: () => fetchJSON<import('./types').DeploymentsResponse>('/deployments'),
   },
 
   registry: {
@@ -48,7 +92,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(config),
       }),
-    sync: () => fetchJSON<{ synced: number; skills: string[] }>('/registry/sync', { method: 'POST' }),
+    sync: () => fetchJSON<import('./types').SyncResult>('/registry/sync', { method: 'POST' }),
   },
 
   graph: {

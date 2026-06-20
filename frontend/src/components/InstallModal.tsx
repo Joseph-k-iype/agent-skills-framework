@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Download, CheckCircle2, AlertCircle } from 'lucide-react'
+import { api } from '../lib/api'
 import { RequirePermission } from './RequireRole'
 
 interface InstallModalProps {
@@ -12,18 +13,40 @@ interface InstallModalProps {
 
 export default function InstallModal({ open, onClose, skillName, versions, latest }: InstallModalProps) {
   const [selectedVersion, setSelectedVersion] = useState(latest)
-  const [targetPath, setTargetPath] = useState(`./skills/${skillName}`)
+  const [targetPath, setTargetPath] = useState(`installed/${skillName}`)
   const [verify, setVerify] = useState(true)
   const [status, setStatus] = useState<'idle' | 'installing' | 'done' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+  const [resultPath, setResultPath] = useState('')
+
+  // Reset form state every time the modal opens — latest/versions load lazily,
+  // so an always-mounted modal would otherwise keep stale defaults.
+  useEffect(() => {
+    if (open) {
+      setSelectedVersion(latest)
+      setTargetPath(`installed/${skillName}`)
+      setVerify(true)
+      setStatus('idle')
+      setMessage('')
+      setResultPath('')
+    }
+  }, [open, latest, skillName])
 
   if (!open) return null
 
   const handleInstall = async () => {
     setStatus('installing')
+    setMessage('')
     try {
-      await new Promise((r) => setTimeout(r, 1500))
+      const res = await api.skills.install(skillName, {
+        version: selectedVersion,
+        target: targetPath.trim() || undefined,
+        verify,
+      })
+      setResultPath(res.path)
       setStatus('done')
-    } catch {
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Installation failed')
       setStatus('error')
     }
   }
@@ -38,7 +61,7 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
       <div className="w-full max-w-lg rounded-xl border border-gray-800 bg-gray-950 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-gray-100">Install Skill</h3>
-          <button onClick={handleClose} className="btn-ghost p-1">
+          <button onClick={handleClose} className="btn-ghost p-1" aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -76,6 +99,7 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
                 onChange={(e) => setTargetPath(e.target.value)}
                 className="input font-mono text-sm"
               />
+              <p className="mt-1 text-xs text-gray-600">Relative to the server workspace root.</p>
             </div>
 
             <label className="flex items-center gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/50">
@@ -92,21 +116,24 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
             </label>
 
             {status === 'done' && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-600/10 p-3 text-sm text-emerald-400">
-                <CheckCircle2 size={16} />
-                Installed {skillName}@{selectedVersion}
+              <div className="rounded-lg bg-emerald-600/10 p-3 text-sm text-emerald-400">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  Installed {skillName}@{selectedVersion}
+                </div>
+                {resultPath && <p className="mt-1 font-mono text-xs text-emerald-500/80 break-all">{resultPath}</p>}
               </div>
             )}
 
             {status === 'error' && (
-              <div className="flex items-center gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
-                <AlertCircle size={16} />
-                Installation failed
+              <div className="flex items-start gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span className="break-words">{message || 'Installation failed'}</span>
               </div>
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              <button onClick={handleClose} className="btn-ghost">Cancel</button>
+              <button onClick={handleClose} className="btn-ghost">{status === 'done' ? 'Close' : 'Cancel'}</button>
               <button
                 onClick={handleInstall}
                 disabled={status === 'installing' || status === 'done'}

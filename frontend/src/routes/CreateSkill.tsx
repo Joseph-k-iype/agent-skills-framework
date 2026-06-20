@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ChevronRight,
@@ -13,10 +14,15 @@ import {
   Trash2,
   Check,
   Code,
+  Rocket,
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import type { SkillManifest } from '../lib/types'
+import { api } from '../lib/api'
 import { RequirePermission } from '../components/RequireRole'
+import { useAuth } from '../lib/auth'
 
 const steps = ['Basic Info', 'Capabilities & Permissions', 'Dependencies & Triggers', 'Review']
 
@@ -48,8 +54,49 @@ export default function CreateSkill() {
   const [eventTrigger, setEventTrigger] = useState('')
   const [commandTrigger, setCommandTrigger] = useState('')
 
+  const queryClient = useQueryClient()
+  const { can } = useAuth()
+
   const update = <K extends keyof SkillManifest>(key: K, value: SkillManifest[K]) =>
     setManifest((m) => ({ ...m, [key]: value }))
+
+  // Strip empty collections so the scaffolded manifest is clean and minimal.
+  const buildManifestPayload = () => {
+    const m: Record<string, unknown> = {
+      name: manifest.name,
+      version: manifest.version,
+      runtime: manifest.runtime,
+      api_version: manifest.api_version,
+      entry: manifest.entry,
+    }
+    if (manifest.description?.trim()) m.description = manifest.description.trim()
+    if (manifest.capabilities?.length) m.capabilities = manifest.capabilities
+    if (manifest.permissions?.length) m.permissions = manifest.permissions
+    const deps: Record<string, string[]> = {}
+    if (manifest.dependencies?.pip?.length) deps.pip = manifest.dependencies.pip
+    if (manifest.dependencies?.npm?.length) deps.npm = manifest.dependencies.npm
+    if (manifest.dependencies?.skills?.length) deps.skills = manifest.dependencies.skills
+    if (Object.keys(deps).length) m.dependencies = deps
+    const triggers: Record<string, string[]> = {}
+    if (manifest.triggers?.events?.length) triggers.events = manifest.triggers.events
+    if (manifest.triggers?.commands?.length) triggers.commands = manifest.triggers.commands
+    if (Object.keys(triggers).length) m.triggers = triggers
+    if (manifest.config?.required?.length) m.config = { required: manifest.config.required }
+    return m as import('../lib/types').ScaffoldRequest['manifest']
+  }
+
+  const scaffoldMutation = useMutation({
+    mutationFn: (publish: boolean) =>
+      api.skills.scaffold({ manifest: buildManifestPayload(), publish }),
+    onSuccess: (res) => {
+      if (res.success && res.published) {
+        queryClient.invalidateQueries({ queryKey: ['skills'] })
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+        queryClient.invalidateQueries({ queryKey: ['audit'] })
+      }
+    },
+  })
+  const scaffoldResult = scaffoldMutation.data
 
   const addCapability = () => {
     if (!newCapability.trim()) return
@@ -363,10 +410,66 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                 }}
               />
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-600/10 p-3 text-sm text-emerald-400">
-              <Check size={16} />
-              Manifest is ready. Download the file and place it in your skill directory.
+            <div className="flex items-center gap-2 rounded-lg bg-gray-800/60 p-3 text-sm text-gray-400">
+              <Check size={16} className="text-emerald-400" />
+              Manifest is ready. Download it, or scaffold it directly into the server workspace.
             </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-800 pt-4">
+              <button
+                onClick={() => scaffoldMutation.mutate(false)}
+                disabled={scaffoldMutation.isPending}
+                className="btn-secondary"
+              >
+                <Code size={16} /> Scaffold on server
+              </button>
+              {can('skill:publish') && (
+                <button
+                  onClick={() => scaffoldMutation.mutate(true)}
+                  disabled={scaffoldMutation.isPending}
+                  className="btn-primary"
+                >
+                  <Rocket size={16} /> {scaffoldMutation.isPending ? 'Working...' : 'Scaffold & Publish'}
+                </button>
+              )}
+            </div>
+
+            {scaffoldMutation.isError && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span className="break-words">
+                  {scaffoldMutation.error instanceof Error ? scaffoldMutation.error.message : 'Request failed'}
+                </span>
+              </div>
+            )}
+
+            {scaffoldResult && !scaffoldResult.success && scaffoldResult.errors?.length ? (
+              <div className="rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+                <p className="flex items-center gap-2 font-medium"><AlertCircle size={16} /> Validation failed</p>
+                <ul className="mt-2 list-disc space-y-1 pl-6 text-xs">
+                  {scaffoldResult.errors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {scaffoldResult?.success && (
+              <div className="rounded-lg bg-emerald-600/10 p-3 text-sm text-emerald-400">
+                <p className="flex items-center gap-2 font-medium">
+                  <CheckCircle2 size={16} />
+                  {scaffoldResult.published ? 'Scaffolded and published' : 'Scaffolded'}
+                </p>
+                {scaffoldResult.path && (
+                  <p className="mt-1 font-mono text-xs text-emerald-500/80 break-all">{scaffoldResult.path}</p>
+                )}
+                {scaffoldResult.published && (
+                  <button onClick={() => navigate(`/skills/${manifest.name}`)} className="btn-ghost mt-2 text-xs">
+                    View in catalog →
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

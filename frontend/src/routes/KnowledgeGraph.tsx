@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ReactFlow,
@@ -88,7 +88,8 @@ export default function KnowledgeGraph() {
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges)
 
-  useMemo(() => {
+  // Side effect → useEffect (not useMemo, which would setState during render).
+  useEffect(() => {
     setNodes(layoutNodes)
     setEdges(layoutEdges)
   }, [layoutNodes, layoutEdges, setNodes, setEdges])
