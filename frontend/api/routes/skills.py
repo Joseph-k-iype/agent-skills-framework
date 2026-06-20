@@ -20,7 +20,12 @@ class ValidateRequest(BaseModel):
 
 
 class BuildRequest(BaseModel):
-    entry: str = "src/main.py"
+    path: str
+
+
+class PublishRequest(BaseModel):
+    path: str
+    force: bool = False
 
 
 @router.get("")
@@ -123,3 +128,47 @@ def validate_skill(name: str, registry: RegistryClient = Depends(get_registry)):
 def verify_skill(name: str, version: str | None = None, registry: RegistryClient = Depends(get_registry)):
     result = registry.verify(name, version)
     return result
+
+
+@router.post("/build")
+def build_skill(req: BuildRequest):
+    target = Path(req.path).resolve()
+    if not target.exists():
+        raise HTTPException(status_code=404, detail=f"Path not found: {target}")
+
+    errors = validate_full_skill(target)
+    if errors:
+        return {"success": False, "errors": errors}
+
+    manifest = load_manifest(target / "skill.yaml" if (target / "skill.yaml").exists() else target / "skill.json")
+    name = manifest["name"]
+    version = manifest["version"]
+
+    skill_id = compute_skill_id(manifest, target)
+    manifest["id"] = skill_id
+
+    return {
+        "success": True,
+        "name": name,
+        "version": version,
+        "id": skill_id,
+    }
+
+
+@router.post("/publish")
+def publish_skill(req: PublishRequest, registry: RegistryClient = Depends(get_registry)):
+    target = Path(req.path).resolve()
+    if not target.exists():
+        raise HTTPException(status_code=404, detail=f"Path not found: {target}")
+
+    try:
+        result = registry.publish(target, force=req.force)
+        return {
+            "success": True,
+            "name": result["name"],
+            "version": result["version"],
+            "id": result["id"],
+            "path": result["path"],
+        }
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))

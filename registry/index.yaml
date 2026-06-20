@@ -13,3 +13,53 @@ skills:
       local: skills/data-discovery-0.1.0
     git_tags:
       0.1.0: skill/data-discovery/0.1.0
+  data-lineage:
+    versions:
+    - 0.1.0
+    latest: 0.1.0
+    ids:
+      0.1.0: skill://sha256/ce31c3e8265951124c9baa7d315a83856293917e0d3c306e3430999bb851e56c/data-lineage@0.1.0
+    locations:
+      local: skills/data-lineage-0.1.0
+    git_tags:
+      0.1.0: skill/data-lineage/0.1.0
+  data-tagging:
+    versions:
+    - 0.1.0
+    latest: 0.1.0
+    ids:
+      0.1.0: skill://sha256/7ec0dd12eb63e9eb44c3c44ffdb823fc0a8063638959561ad92e9f64572288d9/data-tagging@0.1.0
+    locations:
+      local: skills/data-tagging-0.1.0
+    git_tags:
+      0.1.0: skill/data-tagging/0.1.0
+  data-quality:
+    versions:
+    - 0.1.0
+    latest: 0.1.0
+    ids:
+      0.1.0: skill://sha256/0176df14469c9c95dd7ed6e846528d54da2ce2621346619b814dab362d8d6553/data-quality@0.1.0
+    locations:
+      local: skills/data-quality-0.1.0
+    git_tags:
+      0.1.0: skill/data-quality/0.1.0
+  data-enrichment:
+    versions:
+    - 0.1.0
+    latest: 0.1.0
+    ids:
+      0.1.0: skill://sha256/6cdccf661706eebdc2526fac096ea1dc98bfebc51338d8e122fc38b9602e9a17/data-enrichment@0.1.0
+    locations:
+      local: skills/data-enrichment-0.1.0
+    git_tags:
+      0.1.0: skill/data-enrichment/0.1.0
+  data-masking:
+    versions:
+    - 0.1.0
+    latest: 0.1.0
+    ids:
+      0.1.0: skill://sha256/c3ee784ca225dc889023f8648c62dcd8748f8ab018742ca47d757381ae005c2e/data-masking@0.1.0
+    locations:
+      local: skills/data-masking-0.1.0
+    git_tags:
+      0.1.0: skill/data-masking/0.1.0

@@ -28,6 +28,16 @@ export const api = {
       const params = version ? `?version=${encodeURIComponent(version)}` : ''
       return fetchJSON<import('./types').VerifyResult>(`/skills/${encodeURIComponent(name)}/verify${params}`, { method: 'POST' })
     },
+    build: (path: string) =>
+      fetchJSON<{ success: boolean; name?: string; version?: string; id?: string; errors?: string[] }>('/skills/build', {
+        method: 'POST',
+        body: JSON.stringify({ path }),
+      }),
+    publish: (path: string, force = false) =>
+      fetchJSON<{ success: boolean; name?: string; version?: string; id?: string; path?: string }>('/skills/publish', {
+        method: 'POST',
+        body: JSON.stringify({ path, force }),
+      }),
   },
 
   registry: {

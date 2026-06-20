@@ -1,0 +1,40 @@
+name: data-masking
+version: 0.1.0
+description: >
+  Applies PII and PHI masking policies to sensitive data fields.
+  Supports multiple masking techniques including redaction,
+  tokenization, encryption, and format-preserving masking.
+  Integrates with data-discovery to detect sensitive columns.
+runtime: python
+api_version: 1
+entry: src/main.py
+triggers:
+  events:
+    - policy.updated
+    - asset.classified
+  commands:
+    - /mask
+    - /policies
+    - /discover-sensitive
+capabilities:
+  - masking:apply
+  - masking:policies
+  - masking:discover
+config:
+  required:
+    - masking_policies
+    - pii_endpoint
+dependencies:
+  pip:
+    - pydantic>=2.0
+    - cryptography>=41.0
+  skills:
+    - data-discovery@^0.1.0
+    - data-tagging@^0.1.0
+permissions:
+  - resource: pii_data
+    actions: [read, execute]
+  - resource: masking_policy
+    actions: [read, write]
+  - resource: audit_log
+    actions: [write]
