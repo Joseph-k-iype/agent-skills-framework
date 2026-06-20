@@ -1,5 +1,15 @@
 schema_version: 1
 sources:
-  - type: local
-    path: ./skills
-skills: {}
+- type: local
+  path: ./skills
+skills:
+  data-discovery:
+    versions:
+    - 0.1.0
+    latest: 0.1.0
+    ids:
+      0.1.0: skill://sha256/23102ae16082e7abd7ed3cc087a654b18b581e64bf9015a97b11985b7f80ec0c/data-discovery@0.1.0
+    locations:
+      local: skills/data-discovery-0.1.0
+    git_tags:
+      0.1.0: skill/data-discovery/0.1.0

@@ -11,6 +11,9 @@ Enterprise framework for building, testing, and publishing agent skills for data
 - `registry/` — Local filesystem registry with `index.yaml`
 - `skills/` — Reference skill implementations (e.g., `data-discovery`)
 - `testing/` — Test harness for running skills in isolation
+- `frontend/` — React + Vite + Tailwind dashboard + FastAPI backend
+  - `frontend/api/` — FastAPI server wrapping Python SDK with REST endpoints
+  - `frontend/src/` — React app with Dashboard, Catalog, Skill Detail pages
 
 ## Skill Manifest
 

@@ -1,0 +1,66 @@
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+
+export type UserRole = 'admin' | 'developer' | 'consumer' | 'governance' | 'viewer'
+
+interface AuthState {
+  role: UserRole
+  setRole: (role: UserRole) => void
+  can: (...actions: string[]) => boolean
+  isAtLeast: (minRole: UserRole) => boolean
+}
+
+const roleHierarchy: Record<UserRole, number> = {
+  viewer: 0,
+  consumer: 1,
+  developer: 2,
+  governance: 3,
+  admin: 4,
+}
+
+const rolePermissions: Record<UserRole, string[]> = {
+  admin: ['*'],
+  developer: ['skill:create', 'skill:edit', 'skill:delete', 'skill:publish', 'skill:validate', 'skill:verify'],
+  consumer: ['skill:install', 'skill:view', 'skill:search'],
+  governance: ['skill:validate', 'skill:verify', 'skill:view', 'skill:audit'],
+  viewer: ['skill:view', 'skill:search'],
+}
+
+const AuthContext = createContext<AuthState | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [role, setRole] = useState<UserRole>('developer')
+
+  const can = useCallback(
+    (...actions: string[]) => {
+      if (role === 'admin') return true
+      const perms = rolePermissions[role]
+      return actions.some((a) => perms.includes(a))
+    },
+    [role],
+  )
+
+  const isAtLeast = useCallback(
+    (minRole: UserRole) => roleHierarchy[role] >= roleHierarchy[minRole],
+    [role],
+  )
+
+  return (
+    <AuthContext.Provider value={{ role, setRole, can, isAtLeast }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
+}
+
+export const roleOptions: { value: UserRole; label: string; description: string }[] = [
+  { value: 'admin', label: 'Admin', description: 'Full access to all features' },
+  { value: 'developer', label: 'Developer', description: 'Create, publish, and manage skills' },
+  { value: 'consumer', label: 'Consumer', description: 'Browse, search, and install skills' },
+  { value: 'governance', label: 'Governance', description: 'Validate, audit, and enforce policies' },
+  { value: 'viewer', label: 'Viewer', description: 'Read-only access' },
+]
