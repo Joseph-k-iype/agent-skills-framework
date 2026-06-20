@@ -8,7 +8,7 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^skill://sha256/[a-f0-9]{64}/[a-z][a-z0-9-]*@\\d+\\.\\d+\\.\\d+$",
+      "pattern": "^skill://sha256/[a-f0-9]{64}/[a-z][a-z0-9-]*@\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
       "description": "Content-addressed skill identifier (SPIFFE-inspired URI format: skill://sha256/<hash>/<name>@<version>)"
     },
     "name": {
@@ -20,8 +20,8 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$",
-      "description": "Semantic version of the skill (e.g. 1.0.0)"
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version of the skill (e.g. 1.0.0, 1.2.3-rc.1, 1.0.0+build.5)"
     },
     "description": {
       "type": "string",

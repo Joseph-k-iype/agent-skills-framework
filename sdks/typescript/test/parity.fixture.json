@@ -1,0 +1,36 @@
+{
+  "manifest": {
+    "name": "parity-skill",
+    "version": "1.2.3-rc.1",
+    "runtime": "typescript",
+    "api_version": 1,
+    "entry": "src/index.ts",
+    "description": "Cross-language parity — accents: café, emoji 🔥",
+    "capabilities": [
+      "b:cap",
+      "a:cap"
+    ],
+    "triggers": {
+      "commands": [
+        "/run"
+      ],
+      "events": [
+        "x.y"
+      ]
+    },
+    "dependencies": {
+      "npm": [
+        "zod@^3"
+      ],
+      "skills": [
+        "other@^1.0.0"
+      ]
+    }
+  },
+  "files": {
+    "src/index.ts": "export const x = 1\n",
+    "src/util/helpers.ts": "// helpers café 🔥\n",
+    "README.md": "# Parity\n"
+  },
+  "expectedId": "skill://sha256/2ceadbc52eb62c10d68834f340611cec89500056e9aeb1c3de70af71601853ff/parity-skill@1.2.3-rc.1"
+}

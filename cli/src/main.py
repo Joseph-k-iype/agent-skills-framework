@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "sdks" / "python"))
 
-from skill_sdk.validation import load_manifest, ValidationError, validate_full_skill
+from skill_sdk.validation import (
+    load_manifest,
+    ValidationError,
+    validate_full_skill,
+    lint_full_skill,
+)
 from skill_sdk.registry import RegistryClient
 from skill_sdk.hashing import compute_skill_id, validate_skill_id
 from skill_sdk.adapter import generate_skill_doc
@@ -99,7 +104,11 @@ def cmd_validate(args):
             errors.extend(id_errors)
 
         from skill_sdk.validation import detect_dependency_cycles
-        cycle_errors = detect_dependency_cycles(manifest)
+        registry = None
+        registry_dir = Path(args.registry) if args.registry else Path.cwd() / "registry"
+        if registry_dir.exists():
+            registry = RegistryClient(registry_dir, auto_tag=False)
+        cycle_errors = detect_dependency_cycles(manifest, registry)
         errors.extend(cycle_errors)
 
     if errors:
@@ -112,6 +121,8 @@ def cmd_validate(args):
     sid = manifest.get("id", "(not computed)")
     print(f"✓ Valid: {manifest['name']}@{manifest['version']}")
     print(f"  ID: {sid}")
+    for warning in lint_full_skill(target):
+        print(f"  ⚠ {warning}")
 
 
 def cmd_build(args):
@@ -136,26 +147,39 @@ def cmd_build(args):
     skill_id = compute_skill_id(manifest, target)
     manifest["id"] = skill_id
 
-    dist = target / "dist"
-    dist.mkdir(exist_ok=True)
-    dest_manifest = dist / manifest_file.name
+    import shutil
     import yaml
+
+    dist = target / "dist"
+    if dist.exists():
+        shutil.rmtree(dist)
+    dist.mkdir(parents=True)
+
+    # Copy sources first (excluding junk/secrets), THEN stamp the manifest — the
+    # previous order let the copy loop overwrite the id'd manifest with the
+    # source manifest, producing a dist whose manifest lacked the computed id.
+    _ignore = {".git", "__pycache__", "node_modules", "dist"}
+    for item in target.iterdir():
+        if item.name in _ignore or item.name.startswith(".") or item.name.endswith(".egg-info"):
+            continue
+        if item.is_dir():
+            shutil.copytree(item, dist / item.name, dirs_exist_ok=True)
+        else:
+            shutil.copy2(item, dist / item.name)
+
+    dest_manifest = dist / manifest_file.name
     if manifest_file.suffix in (".yaml", ".yml"):
-        dest_manifest.write_text(yaml.dump(manifest, default_flow_style=False, sort_keys=False), encoding="utf-8")
+        dest_manifest.write_text(
+            yaml.dump(manifest, default_flow_style=False, sort_keys=False), encoding="utf-8"
+        )
     else:
         dest_manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
-    import shutil
-    for item in target.iterdir():
-        if item.name not in (".git", "__pycache__", "node_modules", "dist"):
-            if item.is_dir():
-                shutil.copytree(item, dist / item.name, dirs_exist_ok=True)
-            else:
-                shutil.copy2(item, dist / item.name)
 
     print(f"✓ Built: {name}@{version}")
     print(f"  ID: {skill_id}")
     print(f"  Output: {dist}")
+    for warning in lint_full_skill(target):
+        print(f"  ⚠ {warning}")
 
 
 def cmd_publish(args):
@@ -200,6 +224,7 @@ def cmd_install(args):
             args.target,
             version=args.version,
             source=args.source,
+            verify=not args.no_verify,
         )
         print(f"✓ Installed '{args.name}' to {target}")
     except ValidationError as e:
@@ -241,12 +266,10 @@ def cmd_doc(args):
 
     try:
         text = generate_skill_doc(manifest_file, format=args.format, output_path=args.output)
-        if not args.output and args.format == "markdown":
-            print(text)
-        elif not args.output:
-            print(text)
-        else:
+        if args.output:
             print(f"✓ Generated {args.format} documentation: {args.output}")
+        else:
+            print(text)
     except Exception as e:
         print(f"✗ Documentation generation failed: {e}")
         sys.exit(1)
@@ -284,6 +307,8 @@ def cmd_sync(args):
             print(f"✓ Added source: {result['source']['type']}")
         sync_result = registry.sync_from_sources()
         print(f"✓ Synced {sync_result['synced']} skill(s) from sources")
+        for err in sync_result.get("errors", []):
+            print(f"  ⚠ source error: {err}")
     except Exception as e:
         print(f"✗ Sync failed: {e}")
         sys.exit(1)
@@ -371,6 +396,7 @@ def main():
     inst_p.add_argument("--target", help="Install target directory (default: cwd)")
     inst_p.add_argument("--version", help="Specific version to install")
     inst_p.add_argument("--source", help="Source type (local, git)")
+    inst_p.add_argument("--no-verify", action="store_true", help="Skip post-install integrity check")
 
     list_p = sub.add_parser("list", help="List skills in registry")
     list_p.add_argument("--registry", help="Path to registry directory")

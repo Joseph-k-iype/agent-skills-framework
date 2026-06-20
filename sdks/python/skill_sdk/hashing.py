@@ -71,8 +71,13 @@ def compute_skill_id(
 
     # 1) Canonical manifest JSON (the ``id`` field is excluded so stamping the
     #    computed id back in is idempotent). sort_keys recurses into nested objects.
+    # ensure_ascii=False so the canonical bytes are the raw UTF-8 of the
+    # characters — this lets the TypeScript SDK (whose JSON.stringify never
+    # escapes non-ASCII) compute a byte-identical hash.
     manifest_copy = {k: v for k, v in manifest.items() if k != "id"}
-    canonical = json.dumps(manifest_copy, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        manifest_copy, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     hasher.update(canonical.encode("utf-8"))
 
     # 2) Each source file: POSIX relative path + NUL + streamed bytes + NUL.

@@ -208,7 +208,11 @@ def test_nested_paths_use_posix_separator(minimal_manifest):
     _write(tmp, "src/sub/deep/mod.py", "value = 1")
 
     h = hashlib.sha256()
-    h.update(json.dumps(minimal_manifest, sort_keys=True, separators=(",", ":")).encode())
+    h.update(
+        json.dumps(
+            minimal_manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+    )
     for f in iter_source_files(tmp):
         rel = f.relative_to(tmp.resolve())
         assert "\\" not in rel.as_posix()

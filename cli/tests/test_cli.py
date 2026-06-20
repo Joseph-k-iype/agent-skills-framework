@@ -140,3 +140,39 @@ class TestDocCommand:
         content = (skill_manifest / "README.md").read_text()
         assert "# doc-skill v1.0.0" in content
         assert "doc:test" in content
+
+
+class TestBuildCommand:
+    @pytest.fixture
+    def buildable_skill(self, tmp_path):
+        manifest = {
+            "name": "build-skill", "version": "1.0.0", "runtime": "python",
+            "api_version": 1, "entry": "src/main.py",
+        }
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "main.py").write_text("# entry")
+        (tmp_path / "skill.json").write_text(json.dumps(manifest))
+        (tmp_path / ".env").write_text("SECRET=x")
+        return tmp_path
+
+    def _args(self, path):
+        class Args:
+            pass
+        a = Args()
+        a.path = str(path)
+        a.registry = None
+        a.skip_validation = False
+        return a
+
+    def test_build_stamps_id_into_dist_manifest(self, buildable_skill):
+        from cli.src.main import cmd_build
+        cmd_build(self._args(buildable_skill))
+        dist_manifest = json.loads((buildable_skill / "dist" / "skill.json").read_text())
+        # Regression: the copy loop used to overwrite the stamped manifest with
+        # the id-less source, leaving the built artifact without its id.
+        assert dist_manifest.get("id", "").startswith("skill://sha256/")
+
+    def test_build_excludes_dotenv_from_dist(self, buildable_skill):
+        from cli.src.main import cmd_build
+        cmd_build(self._args(buildable_skill))
+        assert not (buildable_skill / "dist" / ".env").exists()
