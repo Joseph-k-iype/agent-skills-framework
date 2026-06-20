@@ -98,7 +98,11 @@ export function canonicalJson(value: unknown): string {
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  // Copy into a freshly-allocated ArrayBuffer: a Uint8Array may be backed by a
+  // SharedArrayBuffer, which the WebCrypto BufferSource type rejects.
+  const buf = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buf).set(bytes)
+  const digest = await crypto.subtle.digest('SHA-256', buf)
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')

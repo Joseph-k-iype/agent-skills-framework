@@ -71,6 +71,22 @@ skill graph register          # Register skill in FalkorDB knowledge graph
 skill graph query --capability <c>  # Query graph by capability
 ```
 
+## Testing
+
+Run every suite (Python SDK, CLI, reference skill, harness, TypeScript) with one command:
+
+```bash
+make install-ts   # first time only: install TypeScript deps
+make test         # or: bash scripts/run_tests.sh
+```
+
+Individual suites: `make test-sdk | test-cli | test-skill | test-harness | test-ts`.
+
+Notes:
+- `version` accepts full SemVer (`1.2.3`, `1.2.3-rc.1`, `1.0.0+build.5`).
+- `publish` is non-destructive — the computed `id` is written into the registry copy, not your source manifest.
+- `install` re-verifies content integrity by default; pass `--no-verify` to skip.
+
 ## Data Management Domain Skills
 
 - `data-discovery` — Crawl schemas, profile statistics, publish to catalog
