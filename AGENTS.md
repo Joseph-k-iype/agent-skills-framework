@@ -2,6 +2,11 @@
 
 Enterprise framework for building, testing, and publishing agent skills for data management and governance.
 
+Full documentation for every part of this repo (architecture, SDKs, CLI,
+manifest spec, content-addressing, testing, frontend, security) lives in
+[`docs/`](docs/README.md). This file stays a quick human-facing overview;
+`docs/` is the single source of truth for detail.
+
 ## Project Structure
 
 - `spec/` — Skill manifest JSON Schema and specification docs
@@ -14,15 +19,18 @@ Enterprise framework for building, testing, and publishing agent skills for data
 - `frontend/` — React + Vite + Tailwind dashboard + FastAPI backend
   - `frontend/api/` — FastAPI server wrapping Python SDK with REST endpoints
   - `frontend/src/` — React app with Dashboard, Catalog, Skill Detail pages
+  - See [`docs/frontend.md`](docs/frontend.md) for full feature/API/architecture docs and [`docs/security.md`](docs/security.md) for the threat model
 
 ## Skill Manifest
 
-Every skill has a `skill.yaml` (or `skill.json`) at its root:
+Every skill has a `SKILL.md` (YAML frontmatter + Markdown body) at its root.
+Legacy `skill.yaml` and `skill.json` formats are still accepted but deprecated.
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | kebab-case identifier (2-64 chars) |
 | `version` | yes | SemVer (e.g. `1.0.0`) |
+| `description` | yes | Human-readable description |
 | `runtime` | yes | `python` or `typescript` |
 | `api_version` | yes | API contract version |
 | `entry` | yes | Entry point relative to skill root |

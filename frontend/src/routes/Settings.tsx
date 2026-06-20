@@ -134,7 +134,7 @@ export default function Settings() {
             <span>
               Client-side preview only. This switches which UI is permission-gated; it is
               <strong> not</strong> an authorization boundary. Real authz is enforced server-side
-              via the API key — see SECURITY.md.
+              via the API key — see docs/security.md.
             </span>
           </div>
           <div className="space-y-2">

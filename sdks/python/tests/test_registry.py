@@ -24,6 +24,7 @@ def valid_skill():
     manifest = {
         "name": "test-skill",
         "version": "1.0.0",
+        "description": "test skill",
         "runtime": "python",
         "api_version": 1,
         "entry": "src/main.py",
@@ -203,8 +204,8 @@ class TestEdgeCases:
     def test_publish_yaml_manifest(self, registry):
         tmp = Path(tempfile.mkdtemp())
         manifest = {
-            "name": "yaml-skill", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "main.py",
+            "name": "yaml-skill", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "main.py",
         }
         (tmp / "skill.yaml").write_text(yaml.dump(manifest))
         (tmp / "main.py").write_text("# placeholder")
@@ -214,8 +215,8 @@ class TestEdgeCases:
     def test_publish_with_skill_dependency(self, registry):
         tmp = Path(tempfile.mkdtemp())
         manifest = {
-            "name": "dependent", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "main.py",
+            "name": "dependent", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "main.py",
             "dependencies": {"skills": ["base-skill@^1.0.0"]},
         }
         (tmp / "skill.json").write_text(json.dumps(manifest))

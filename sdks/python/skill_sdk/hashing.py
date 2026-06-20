@@ -10,7 +10,7 @@ ID_URI_AUTHORITY = "sha256"
 
 # Manifests are excluded from the source hash so that writing the computed ``id``
 # back into a manifest does not change the hash.
-MANIFEST_NAMES = frozenset({"skill.yaml", "skill.yml", "skill.json"})
+MANIFEST_NAMES = frozenset({"SKILL.md", "skill.yaml", "skill.yml", "skill.json"})
 
 # Directory names that never contribute to a skill's identity. ``tests`` is here
 # because identity is the *shippable artifact*; editing a test must not churn the

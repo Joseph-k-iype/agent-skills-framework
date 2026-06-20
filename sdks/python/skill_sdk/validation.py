@@ -11,6 +11,38 @@ from .hashing import validate_skill_id
 
 SCHEMA_PATH = Path(__file__).parent.parent.parent.parent / "spec" / "skill-schema.json"
 
+SKILL_MD_NAMES = frozenset({"SKILL.md"})
+LEGACY_MANIFEST_NAMES = frozenset({"skill.yaml", "skill.yml", "skill.json"})
+SKILL_MANIFEST_NAMES = SKILL_MD_NAMES | LEGACY_MANIFEST_NAMES
+
+
+def find_manifest_file(skill_dir: str | Path) -> Path | None:
+    skill_dir = Path(skill_dir).resolve()
+    for name in ("SKILL.md", "skill.yaml", "skill.yml", "skill.json"):
+        p = skill_dir / name
+        if p.exists():
+            return p
+    return None
+
+
+def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str] | None:
+    stripped = text.lstrip("\ufeff").lstrip("\n")
+    if not stripped.startswith("---"):
+        return None
+    stripped = stripped[3:]
+    end = stripped.find("\n---")
+    if end == -1:
+        return None
+    yaml_block = stripped[:end]
+    body = stripped[end + 4:].lstrip("\n")
+    try:
+        manifest = yaml.safe_load(yaml_block)
+    except yaml.YAMLError:
+        return None
+    if not isinstance(manifest, dict):
+        return None
+    return manifest, body
+
 
 class ValidationError(Exception):
     def __init__(self, message: str, errors: list[str] | None = None):
@@ -26,7 +58,7 @@ class ValidationError(Exception):
 
 def _validate_required_fields(manifest: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    required = ["name", "version", "runtime", "api_version", "entry"]
+    required = ["name", "version", "description", "runtime", "api_version", "entry"]
     for field in required:
         if field not in manifest:
             errors.append(f"Missing required field: '{field}'")
@@ -284,7 +316,12 @@ def validate_manifest_file(path: str | Path) -> list[str]:
 
     try:
         content = path.read_text(encoding="utf-8")
-        if path.suffix in (".yaml", ".yml"):
+        if path.name in SKILL_MD_NAMES:
+            result = _parse_frontmatter(content)
+            if result is None:
+                return [f"Invalid SKILL.md: no valid frontmatter found in {path}"]
+            manifest = result[0]
+        elif path.suffix in (".yaml", ".yml"):
             manifest = yaml.safe_load(content)
         else:
             manifest = json.loads(content)
@@ -306,11 +343,9 @@ def validate_full_skill(skill_path: str | Path) -> list[str]:
     skill_path = Path(skill_path).resolve()
     errors: list[str] = []
 
-    manifest_path = skill_path / "skill.yaml"
-    if not manifest_path.exists():
-        manifest_path = skill_path / "skill.json"
-    if not manifest_path.exists():
-        return [f"No skill.yaml or skill.json found in {skill_path}"]
+    manifest_path = find_manifest_file(skill_path)
+    if manifest_path is None:
+        return [f"No SKILL.md, skill.yaml, or skill.json found in {skill_path}"]
 
     errors.extend(validate_manifest_file(manifest_path))
 
@@ -341,6 +376,11 @@ def lint_full_skill(skill_path: str | Path) -> list[str]:
 def _load_manifest_raw(path: Path) -> dict[str, Any] | None:
     try:
         content = path.read_text(encoding="utf-8")
+        if path.name in SKILL_MD_NAMES:
+            result = _parse_frontmatter(content)
+            if result is not None:
+                return result[0]
+            return None
         if path.suffix in (".yaml", ".yml"):
             return yaml.safe_load(content)
         return json.loads(content)
@@ -419,7 +459,12 @@ def load_manifest(path: str | Path) -> dict[str, Any]:
 
     raw = path.read_text(encoding="utf-8")
 
-    if path.suffix in (".yaml", ".yml"):
+    if path.name in SKILL_MD_NAMES:
+        result = _parse_frontmatter(raw)
+        if result is None:
+            raise ValidationError(f"Invalid SKILL.md: no valid frontmatter found in {path}")
+        manifest = result[0]
+    elif path.suffix in (".yaml", ".yml"):
         try:
             manifest = yaml.safe_load(raw)
         except yaml.YAMLError as e:
@@ -438,3 +483,38 @@ def load_manifest(path: str | Path) -> dict[str, Any]:
         raise ValidationError("Manifest validation failed", errors=errors)
 
     return manifest
+
+
+def load_manifest_with_body(path: str | Path) -> tuple[dict[str, Any], str]:
+    path = Path(path)
+    if not path.exists():
+        raise ValidationError(f"Manifest not found: {path}")
+
+    raw = path.read_text(encoding="utf-8")
+
+    if path.name in SKILL_MD_NAMES:
+        result = _parse_frontmatter(raw)
+        if result is None:
+            raise ValidationError(f"Invalid SKILL.md: no valid frontmatter found in {path}")
+        manifest, body = result
+    elif path.suffix in (".yaml", ".yml"):
+        try:
+            manifest = yaml.safe_load(raw)
+        except yaml.YAMLError as e:
+            raise ValidationError(f"Invalid YAML: {e}")
+        body = ""
+    else:
+        try:
+            manifest = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValidationError(f"Invalid JSON: {e}")
+        body = ""
+
+    if not isinstance(manifest, dict):
+        raise ValidationError("Manifest must be a JSON/YAML object")
+
+    errors = validate_manifest(manifest)
+    if errors:
+        raise ValidationError("Manifest validation failed", errors=errors)
+
+    return manifest, body

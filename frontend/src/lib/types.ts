@@ -135,6 +135,7 @@ export interface DocResult {
 
 export interface ManifestResponse {
   manifest: SkillManifest
+  body: string
   raw: string
 }
 

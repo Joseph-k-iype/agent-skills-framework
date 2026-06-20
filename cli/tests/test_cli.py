@@ -22,14 +22,15 @@ class TestInitCommand:
         args.path = str(tmp_path / "test-skill")
         cmd_init(args)
         skill_dir = Path(args.path)
-        assert (skill_dir / "skill.json").exists()
+        assert (skill_dir / "SKILL.md").exists()
         assert (skill_dir / "src" / "main.py").exists()
         assert (skill_dir / "tests").exists()
 
     def test_init_creates_valid_manifest(self, args, tmp_path):
         args.path = str(tmp_path / "test-skill")
         cmd_init(args)
-        manifest = json.loads((Path(args.path) / "skill.json").read_text())
+        from skill_sdk.validation import load_manifest
+        manifest = load_manifest(Path(args.path) / "SKILL.md")
         assert manifest["name"] == "test-skill"
         assert manifest["version"] == "0.1.0"
         assert manifest["runtime"] == "python"
@@ -46,8 +47,8 @@ class TestValidateCommand:
     @pytest.fixture
     def valid_skill(self, tmp_path):
         manifest = {
-            "name": "valid-skill", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "main.py",
+            "name": "valid-skill", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "main.py",
         }
         (tmp_path / "skill.json").write_text(json.dumps(manifest))
         (tmp_path / "main.py").write_text("# placeholder")
@@ -146,8 +147,8 @@ class TestBuildCommand:
     @pytest.fixture
     def buildable_skill(self, tmp_path):
         manifest = {
-            "name": "build-skill", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "src/main.py",
+            "name": "build-skill", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "src/main.py",
         }
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "main.py").write_text("# entry")

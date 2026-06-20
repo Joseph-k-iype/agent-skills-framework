@@ -13,7 +13,7 @@ from skill_sdk import (
     SkillResult,
     HealthStatus,
 )
-from skill_sdk.validation import load_manifest
+from skill_sdk.validation import load_manifest, find_manifest_file
 
 
 class SkillTestHarness:
@@ -26,10 +26,8 @@ class SkillTestHarness:
 
     def __init__(self, skill_path: str | Path):
         self.skill_path = Path(skill_path).resolve()
-        manifest_path = self.skill_path / "skill.yaml"
-        if not manifest_path.exists():
-            manifest_path = self.skill_path / "skill.json"
-        if not manifest_path.exists():
+        manifest_path = find_manifest_file(self.skill_path)
+        if not manifest_path:
             raise FileNotFoundError(f"No manifest found in {skill_path}")
         self.manifest = load_manifest(manifest_path)
         self._skill: BaseSkill | None = None

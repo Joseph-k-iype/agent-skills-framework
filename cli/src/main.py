@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "sdks" / "python"))
 
 from skill_sdk.validation import (
     load_manifest,
+    find_manifest_file,
+    _parse_frontmatter,
     ValidationError,
     validate_full_skill,
     lint_full_skill,
@@ -36,22 +38,48 @@ def cmd_init(args):
     tests = path / "tests"
     tests.mkdir()
 
-    manifest = {
-        "name": name,
-        "version": "0.1.0",
-        "description": f"Description of {name}",
-        "runtime": "python",
-        "api_version": 1,
-        "entry": "src/main.py",
-        "triggers": {"events": [], "commands": []},
-        "capabilities": [],
-        "config": {"required": [], "schema": {}},
-        "dependencies": {"pip": [], "npm": [], "skills": []},
-        "permissions": [],
-    }
+    manifest_lines = []
+    manifest_lines.append(f"name: {name}")
+    manifest_lines.append("version: 0.1.0")
+    manifest_lines.append(f"description: Description of {name}")
+    manifest_lines.append("runtime: python")
+    manifest_lines.append("api_version: 1")
+    manifest_lines.append("entry: src/main.py")
+    manifest_lines.append("")
+    manifest_lines.append("triggers:")
+    manifest_lines.append("  events: []")
+    manifest_lines.append("  commands: []")
+    manifest_lines.append("capabilities: []")
+    manifest_lines.append("")
+    manifest_lines.append("config:")
+    manifest_lines.append("  required: []")
+    manifest_lines.append("  schema: {}")
+    manifest_lines.append("")
+    manifest_lines.append("dependencies:")
+    manifest_lines.append("  pip: []")
+    manifest_lines.append("  npm: []")
+    manifest_lines.append("  skills: []")
+    manifest_lines.append("permissions: []")
 
-    manifest_path = path / "skill.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    body = f"""# {name}
+
+Instructions for the AI agent using this skill.
+
+## Overview
+
+{name} is a skill that does something useful.
+
+## Usage
+
+Describe how to interact with this skill.
+
+## Examples
+
+Provide example interactions.
+"""
+    text = "---\n" + "\n".join(manifest_lines) + "\n---\n\n" + body.lstrip()
+    manifest_path = path / "SKILL.md"
+    manifest_path.write_text(text, encoding="utf-8")
 
     main_py = src / "main.py"
     code = '''from skill_sdk import BaseSkill, SkillContext, SkillEvent, SkillCommand, SkillResult, HealthStatus
@@ -90,12 +118,12 @@ class Skill(BaseSkill):
 
 def cmd_validate(args):
     target = Path(args.path)
-    errors = validate_full_skill(target)
-    manifest_file = target / "skill.yaml" if (target / "skill.yaml").exists() else target / "skill.json"
-
-    if not manifest_file.exists():
-        print(f"Error: no skill.yaml or skill.json found in {target}")
+    manifest_file = find_manifest_file(target)
+    if not manifest_file:
+        print(f"Error: no SKILL.md, skill.yaml, skill.yml, or skill.json found in {target}")
         sys.exit(1)
+
+    errors = validate_full_skill(target)
 
     if args.deep:
         manifest = load_manifest(manifest_file)
@@ -127,9 +155,9 @@ def cmd_validate(args):
 
 def cmd_build(args):
     target = Path(args.path)
-    manifest_file = target / "skill.yaml" if (target / "skill.yaml").exists() else target / "skill.json"
-    if not manifest_file.exists():
-        print(f"Error: no skill.yaml or skill.json found in {target}")
+    manifest_file = find_manifest_file(target)
+    if not manifest_file:
+        print(f"Error: no SKILL.md, skill.yaml, skill.yml, or skill.json found in {target}")
         sys.exit(1)
 
     if not args.skip_validation:
@@ -168,7 +196,22 @@ def cmd_build(args):
             shutil.copy2(item, dist / item.name)
 
     dest_manifest = dist / manifest_file.name
-    if manifest_file.suffix in (".yaml", ".yml"):
+    if manifest_file.name == "SKILL.md":
+        old_body = ""
+        try:
+            from skill_sdk.validation import _parse_frontmatter
+            raw = dest_manifest.read_text(encoding="utf-8")
+            parsed = _parse_frontmatter(raw)
+            if parsed:
+                _, old_body = parsed
+        except Exception:
+            pass
+        frontmatter = yaml.dump(manifest, default_flow_style=False, sort_keys=False).strip()
+        text = f"---\n{frontmatter}\n---"
+        if old_body.strip():
+            text += f"\n\n{old_body.strip()}\n"
+        dest_manifest.write_text(text, encoding="utf-8")
+    elif manifest_file.suffix in (".yaml", ".yml"):
         dest_manifest.write_text(
             yaml.dump(manifest, default_flow_style=False, sort_keys=False), encoding="utf-8"
         )
@@ -203,12 +246,12 @@ def cmd_publish(args):
             import asyncio
             connected = asyncio.run(graph.connect())
             if connected:
-                manifest_path = Path(result["path"]) / "skill.yaml"
-                if not manifest_path.exists():
-                    manifest_path = Path(result["path"]) / "skill.json"
-                gr = graph.register_skill(manifest_path)
-                if gr.get("status") == "registered":
-                    print(f"  Graph: registered [{gr['id']}]")
+                from skill_sdk.validation import find_manifest_file
+                manifest_path = find_manifest_file(Path(result["path"]))
+                if manifest_path:
+                    gr = graph.register_skill(manifest_path)
+                    if gr.get("status") == "registered":
+                        print(f"  Graph: registered [{gr['id']}]")
                 graph.disconnect()
 
     except ValidationError as e:
@@ -259,9 +302,9 @@ def cmd_info(args):
 
 def cmd_doc(args):
     target = Path(args.path)
-    manifest_file = target / "skill.yaml" if (target / "skill.yaml").exists() else target / "skill.json"
-    if not manifest_file.exists():
-        print(f"Error: no skill.yaml or skill.json found in {target}")
+    manifest_file = find_manifest_file(target)
+    if not manifest_file:
+        print(f"Error: no SKILL.md, skill.yaml, skill.yml, or skill.json found in {target}")
         sys.exit(1)
 
     try:
@@ -331,9 +374,9 @@ def cmd_graph(args):
 
     elif args.command == "register":
         target = Path(args.path or ".")
-        manifest_file = target / "skill.yaml" if (target / "skill.yaml").exists() else target / "skill.json"
-        if not manifest_file.exists():
-            print(f"Error: no skill.yaml or skill.json found")
+        manifest_file = find_manifest_file(target)
+        if not manifest_file:
+            print(f"Error: no SKILL.md, skill.yaml, skill.yml, or skill.json found")
             sys.exit(1)
         graph = FalkorDBConnector(host=host, port=port)
         import asyncio

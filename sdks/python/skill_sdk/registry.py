@@ -107,14 +107,16 @@ class RegistryClient:
             raise
 
     def _manifest_path(self, skill_dir: Path) -> Path | None:
-        for name in ("skill.yaml", "skill.yml", "skill.json"):
+        for name in ("SKILL.md", "skill.yaml", "skill.yml", "skill.json"):
             candidate = skill_dir / name
             if candidate.exists():
                 return candidate
         return None
 
     def _write_manifest(self, manifest_path: Path, manifest: dict[str, Any]):
-        if manifest_path.suffix in (".yaml", ".yml"):
+        if manifest_path.name == "SKILL.md":
+            self._write_skill_md(manifest_path, manifest)
+        elif manifest_path.suffix in (".yaml", ".yml"):
             manifest_path.write_text(
                 yaml.dump(manifest, default_flow_style=False, sort_keys=False),
                 encoding="utf-8",
@@ -124,6 +126,22 @@ class RegistryClient:
                 json.dumps(manifest, indent=2, sort_keys=False) + "\n",
                 encoding="utf-8",
             )
+
+    def _write_skill_md(self, path: Path, manifest: dict[str, Any]):
+        old_body = ""
+        try:
+            raw = path.read_text(encoding="utf-8")
+            from .validation import _parse_frontmatter
+            parsed = _parse_frontmatter(raw)
+            if parsed:
+                _, old_body = parsed
+        except Exception:
+            pass
+        frontmatter = yaml.dump(manifest, default_flow_style=False, sort_keys=False).strip()
+        text = f"---\n{frontmatter}\n---"
+        if old_body.strip():
+            text += f"\n\n{old_body.strip()}\n"
+        path.write_text(text, encoding="utf-8")
 
     # -- publish ------------------------------------------------------------
 

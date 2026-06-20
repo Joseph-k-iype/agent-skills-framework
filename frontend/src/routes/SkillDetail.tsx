@@ -81,6 +81,8 @@ export default function SkillDetail() {
   })
 
   const manifest = manifestRes?.manifest
+  const manifestBody = manifestRes?.body
+  const manifestRaw = manifestRes?.raw
   const deps = manifest?.dependencies
 
   const { nodes: depNodes, edges: depEdges } = useMemo(() => {
@@ -243,7 +245,11 @@ export default function SkillDetail() {
       <div>
         {activeTab === 'manifest' && (
           <div className="card">
-            {manifest ? (
+            {manifestRaw ? (
+              <pre className="overflow-x-auto text-sm text-gray-300 font-mono leading-relaxed">
+                {manifestRaw}
+              </pre>
+            ) : manifest ? (
               <pre className="overflow-x-auto text-sm text-gray-300 font-mono leading-relaxed">
                 {JSON.stringify(manifest, null, 2)}
               </pre>
@@ -255,7 +261,11 @@ export default function SkillDetail() {
 
         {activeTab === 'docs' && (
           <div className="card prose prose-invert max-w-none">
-            {doc ? (
+            {manifestBody ? (
+              <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                {manifestBody}
+              </div>
+            ) : doc ? (
               <div className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
                 {doc}
               </div>

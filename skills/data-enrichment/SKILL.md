@@ -1,3 +1,4 @@
+---
 name: data-enrichment
 version: 0.1.0
 description: >
@@ -38,3 +39,20 @@ permissions:
     actions: [read]
   - resource: classification
     actions: [write]
+---
+
+# Data Enrichment
+
+Agent for augmenting data assets with business lineage, glossary terms, and classifications.
+
+## Overview
+
+The Data Enrichment skill enriches assets by resolving foreign keys, inferring semantic types, and linking to business metadata repositories. Depends on data-discovery and data-lineage.
+
+## Triggers
+
+Responds to `asset.discovered` and `glossary.updated` events. Supports `/enrich`, `/classify`, and `/link-glossary` commands.
+
+## Configuration
+
+Requires `enrichment_rules` and `glossary_endpoint` for linking to business metadata.

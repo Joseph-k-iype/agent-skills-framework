@@ -1,3 +1,4 @@
+---
 name: data-discovery
 version: 0.1.0
 description: >
@@ -34,3 +35,27 @@ permissions:
     actions: [read, list]
   - resource: catalog
     actions: [write, create]
+---
+
+# Data Discovery
+
+Agent for discovering and cataloging data assets across configured sources.
+
+## Overview
+
+The Data Discovery skill crawls database schemas (tables, views, columns, types), profiles basic statistics (row counts, null ratios, distinct values), and publishes metadata to a catalog endpoint.
+
+## Triggers
+
+Responds to `data.source.connected` and `schedule.crawl.daily` events. Supports `/discover` and `/profile` commands.
+
+## Configuration
+
+Requires `sources` (list of data source connections) and `catalog_endpoint` (URL for publishing discovered metadata).
+
+## Examples
+
+```yaml
+# Example trigger via command
+/discover
+```

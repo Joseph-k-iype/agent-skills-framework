@@ -1,3 +1,4 @@
+---
 name: data-quality
 version: 0.1.0
 description: 'Validates, monitors, and reports on data quality dimensions including
@@ -39,3 +40,20 @@ permissions:
   - read
   - write
 id: skill://sha256/0176df14469c9c95dd7ed6e846528d54da2ce2621346619b814dab362d8d6553/data-quality@0.1.0
+---
+
+# Data Quality
+
+Agent for validating, monitoring, and reporting on data quality dimensions.
+
+## Overview
+
+The Data Quality skill runs configurable rule sets against data sources, measuring completeness, consistency, timeliness, uniqueness, and accuracy. Publishes quality scores to configured endpoints.
+
+## Triggers
+
+Responds to `schedule.quality.daily` and `data.source.updated` events. Supports `/validate`, `/report`, and `/rules` commands.
+
+## Configuration
+
+Requires `quality_rules` (rule definitions) and `report_endpoint` for publishing quality reports.

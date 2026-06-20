@@ -1,3 +1,4 @@
+---
 name: data-lineage
 version: 0.1.0
 description: 'Tracks column-level data lineage across pipelines, ETL jobs, and data
@@ -43,3 +44,20 @@ permissions:
   actions:
   - read
 id: skill://sha256/ce31c3e8265951124c9baa7d315a83856293917e0d3c306e3430999bb851e56c/data-lineage@0.1.0
+---
+
+# Data Lineage
+
+Agent for tracking column-level data lineage across pipelines and ETL jobs.
+
+## Overview
+
+The Data Lineage skill constructs lineage graphs from metadata, parses SQL transformations, and traces data flow from source to consumption. Depends on data-discovery for schema metadata.
+
+## Triggers
+
+Responds to `pipeline.completed` and `schema.changed` events. Supports `/trace`, `/lineage-graph`, and `/impact-analysis` commands.
+
+## Configuration
+
+Requires `pipeline_endpoint` and `lineage_store` for storing and retrieving lineage metadata.

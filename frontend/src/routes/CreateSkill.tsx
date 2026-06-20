@@ -82,6 +82,7 @@ export default function CreateSkill() {
     if (manifest.triggers?.commands?.length) triggers.commands = manifest.triggers.commands
     if (Object.keys(triggers).length) m.triggers = triggers
     if (manifest.config?.required?.length) m.config = { required: manifest.config.required }
+    m.body = `# ${manifest.name}\n\nAgent instructions for the **${manifest.name}** skill.\n\n## Usage\n\nDescribe how agents interact with this skill.\n\n## Examples\n\nProvide example interactions here.\n`
     return m as import('../lib/types').ScaffoldRequest['manifest']
   }
 
@@ -151,11 +152,13 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
 `
 
   const handleDownload = () => {
-    const blob = new Blob([yamlContent], { type: 'text/yaml' })
+    const body = `# ${manifest.name}\n\nAgent instructions for the **${manifest.name}** skill.\n\n## Usage\n\nDescribe how agents interact with this skill.\n\n## Examples\n\nProvide example interactions here.\n`
+    const text = `---\n${yamlContent.trim()}\n---\n\n${body}`
+    const blob = new Blob([text], { type: 'text/markdown' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'skill.yaml'
+    a.download = 'SKILL.md'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -391,7 +394,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                 <FileKey size={14} /> Review Manifest
               </h3>
               <button onClick={handleDownload} className="btn-primary">
-                <Download size={16} /> Download skill.yaml
+                <Download size={16} /> Download SKILL.md
               </button>
             </div>
             <div className="overflow-hidden rounded-lg border border-gray-800">

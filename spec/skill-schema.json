@@ -4,7 +4,7 @@
   "title": "Agent Skill Manifest",
   "description": "Schema for an enterprise agent skill manifest with content-addressed identity",
   "type": "object",
-  "required": ["name", "version", "runtime", "api_version", "entry"],
+  "required": ["name", "version", "description", "runtime", "api_version", "entry"],
   "properties": {
     "id": {
       "type": "string",

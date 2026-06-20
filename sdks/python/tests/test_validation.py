@@ -21,6 +21,7 @@ def test_valid_manifest():
     manifest = {
         "name": "test-skill",
         "version": "1.0.0",
+        "description": "test skill",
         "runtime": "python",
         "api_version": 1,
         "entry": "src/main.py",
@@ -32,7 +33,7 @@ def test_valid_manifest():
 def test_missing_required_fields():
     manifest = {"name": "test"}
     errors = validate_manifest(manifest)
-    required = {"version", "runtime", "api_version", "entry"}
+    required = {"version", "description", "runtime", "api_version", "entry"}
     missing = {e.split("'")[1] for e in errors if "Missing" in e}
     assert missing == required
 
@@ -42,6 +43,7 @@ class TestNameValidation:
         errors = validate_manifest({
             "name": "InvalidName",
             "version": "1.0.0", "runtime": "python", "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         })
         assert any("kebab-case" in e for e in errors)
 
@@ -49,6 +51,7 @@ class TestNameValidation:
         errors = validate_manifest({
             "name": "a",
             "version": "1.0.0", "runtime": "python", "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         })
         assert any("too short" in e for e in errors)
 
@@ -72,6 +75,7 @@ class TestVersionValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "v1.0",
             "runtime": "python", "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         })
         assert any("SemVer" in e for e in errors)
 
@@ -88,6 +92,7 @@ class TestRuntimeValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "rust",
             "api_version": 1, "entry": "main.py",
+        "description": "test skill",
         })
         assert any("runtime" in e for e in errors)
 
@@ -111,6 +116,7 @@ class TestApiVersionValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 0, "entry": "main.py",
+        "description": "test skill",
         })
         assert any(">= 1" in e for e in errors)
 
@@ -120,6 +126,7 @@ class TestEntryValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "src/main.ts",
+        "description": "test skill",
         })
         assert any(".py" in e for e in errors)
 
@@ -127,6 +134,7 @@ class TestEntryValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "typescript",
             "api_version": 1, "entry": "src/main.py",
+        "description": "test skill",
         })
         assert any(".ts" in e or ".js" in e for e in errors)
 
@@ -143,7 +151,8 @@ class TestTriggerValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "triggers": {"commands": ["no-slash"]},
+        "description": "test skill",
+    "triggers": {"commands": ["no-slash"]},
         })
         assert any("'/" in e for e in errors)
 
@@ -151,7 +160,8 @@ class TestTriggerValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "triggers": {"commands": [42]},
+        "description": "test skill",
+    "triggers": {"commands": [42]},
         })
         assert any("must be a string" in e for e in errors)
 
@@ -159,7 +169,8 @@ class TestTriggerValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "triggers": {"events": [""]},
+        "description": "test skill",
+    "triggers": {"events": [""]},
         })
         assert any("empty" in e for e in errors)
 
@@ -167,7 +178,8 @@ class TestTriggerValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "triggers": "not-a-dict",
+        "description": "test skill",
+    "triggers": "not-a-dict",
         })
         assert any("must be a dict" in e for e in errors)
 
@@ -177,7 +189,8 @@ class TestCapabilitiesValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "capabilities": "not-a-list",
+        "description": "test skill",
+    "capabilities": "not-a-list",
         })
         assert any("must be a list" in e for e in errors)
 
@@ -185,7 +198,8 @@ class TestCapabilitiesValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "capabilities": [""],
+        "description": "test skill",
+    "capabilities": [""],
         })
         assert any("empty" in e for e in errors)
 
@@ -195,7 +209,8 @@ class TestDependencyValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"maven": ["foo:bar"]},
+        "description": "test skill",
+    "dependencies": {"maven": ["foo:bar"]},
         })
         assert any("maven" in e for e in errors)
 
@@ -203,7 +218,8 @@ class TestDependencyValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"skills": ["other-skill"]},
+        "description": "test skill",
+    "dependencies": {"skills": ["other-skill"]},
         })
         assert any("must specify version" in e for e in errors)
 
@@ -211,7 +227,8 @@ class TestDependencyValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"skills": ["BadName@^1.0.0"]},
+        "description": "test skill",
+    "dependencies": {"skills": ["BadName@^1.0.0"]},
         })
         assert any("Invalid" in e for e in errors)
 
@@ -219,7 +236,8 @@ class TestDependencyValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"pip": "not-a-list"},
+        "description": "test skill",
+    "dependencies": {"pip": "not-a-list"},
         })
         assert any("must be a list" in e for e in errors)
 
@@ -229,7 +247,8 @@ class TestPermissionValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "permissions": [{"actions": ["read"]}],
+        "description": "test skill",
+    "permissions": [{"actions": ["read"]}],
         })
         assert any("resource" in e for e in errors)
 
@@ -237,7 +256,8 @@ class TestPermissionValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "permissions": [{"resource": "db", "actions": ["destroy"]}],
+        "description": "test skill",
+    "permissions": [{"resource": "db", "actions": ["destroy"]}],
         })
         assert any("destroy" in e for e in errors)
 
@@ -245,7 +265,8 @@ class TestPermissionValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "permissions": "not-a-list",
+        "description": "test skill",
+    "permissions": "not-a-list",
         })
         assert any("must be a list" in e for e in errors)
 
@@ -253,7 +274,8 @@ class TestPermissionValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "permissions": ["string-not-dict"],
+        "description": "test skill",
+    "permissions": ["string-not-dict"],
         })
         assert any("must be a dict" in e for e in errors)
 
@@ -263,7 +285,8 @@ class TestLifecycleValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "lifecycle": {"on_foo": "script.sh"},
+        "description": "test skill",
+    "lifecycle": {"on_foo": "script.sh"},
         })
         assert any("on_foo" in e for e in errors)
 
@@ -271,7 +294,8 @@ class TestLifecycleValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "lifecycle": ["not-a-dict"],
+        "description": "test skill",
+    "lifecycle": ["not-a-dict"],
         })
         assert any("must be a dict" in e for e in errors)
 
@@ -281,7 +305,8 @@ class TestIdValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "id": "skill://sha256/1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef/test-skill@1.0.0",
+        "description": "test skill",
+    "id": "skill://sha256/1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef/test-skill@1.0.0",
         })
         assert errors == []
 
@@ -289,7 +314,8 @@ class TestIdValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "id": "not-a-valid-id",
+        "description": "test skill",
+    "id": "not-a-valid-id",
         })
         assert any("Invalid id format" in e for e in errors)
 
@@ -297,7 +323,8 @@ class TestIdValidation:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "id": 42,
+        "description": "test skill",
+    "id": 42,
         })
         assert any("must be a string" in e for e in errors)
 
@@ -325,6 +352,7 @@ class TestCycleDetection:
         manifest = {
             "name": "a",
             "version": "1.0.0", "runtime": "python", "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         }
         errors = detect_dependency_cycles(manifest)
         assert errors == []
@@ -334,13 +362,13 @@ class TestFullSkillValidation:
     def test_missing_manifest_dir(self):
         tmp = Path(tempfile.mkdtemp())
         errors = validate_full_skill(tmp)
-        assert any("No skill.yaml" in e for e in errors)
+        assert any("No SKILL.md" in e for e in errors)
 
     def test_missing_entry_point(self):
         tmp = Path(tempfile.mkdtemp())
         manifest = {
-            "name": "test-skill", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "src/missing.py",
+            "name": "test-skill", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "src/missing.py",
         }
         (tmp / "skill.json").write_text(json.dumps(manifest))
         errors = validate_full_skill(tmp)
@@ -353,6 +381,7 @@ class TestManifestFileValidation:
         manifest = {
             "name": "yaml-skill", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         }
         path = tmp / "skill.yaml"
         path.write_text(yaml.dump(manifest))
@@ -373,8 +402,8 @@ class TestManifestFileValidation:
     def test_manifest_with_hash_validation(self):
         tmp = Path(tempfile.mkdtemp())
         manifest = {
-            "name": "hash-test", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "main.py",
+            "name": "hash-test", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "main.py",
         }
         path = tmp / "skill.json"
         path.write_text(json.dumps(manifest))
@@ -392,7 +421,8 @@ class TestManifestFileValidation:
         manifest = {
             "name": "bad-hash", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "id": "skill://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bad-hash@1.0.0",
+        "description": "test skill",
+    "id": "skill://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bad-hash@1.0.0",
         }
         path = tmp / "skill.json"
         path.write_text(json.dumps(manifest))
@@ -405,8 +435,8 @@ class TestManifestFileValidation:
 class TestLoadManifest:
     def test_load_yaml(self):
         tmp = Path(tempfile.mkdtemp())
-        manifest = {"name": "yaml-test", "version": "1.0.0", "runtime": "python",
-                     "api_version": 1, "entry": "main.py"}
+        manifest = {"name": "yaml-test", "version": "1.0.0", "description": "test skill",
+                     "runtime": "python", "api_version": 1, "entry": "main.py"}
         path = tmp / "skill.yaml"
         path.write_text(yaml.dump(manifest))
         result = load_manifest(path)
@@ -447,6 +477,7 @@ class TestFullSemVerVersions:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.2.3-rc.1",
             "runtime": "python", "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         })
         assert errors == []
 
@@ -454,12 +485,14 @@ class TestFullSemVerVersions:
         errors = validate_manifest({
             "name": "test-skill", "version": "1.2.3-rc.1+build.9",
             "runtime": "python", "api_version": 1, "entry": "main.py",
+            "description": "test skill",
         })
         assert errors == []
 
     def test_id_with_prerelease_version_accepted(self):
         errors = validate_manifest({
             "name": "test-skill", "version": "1.0.0-rc.1",
+            "description": "test skill",
             "runtime": "python", "api_version": 1, "entry": "main.py",
             "id": f"skill://sha256/{'a'*64}/test-skill@1.0.0-rc.1",
         })
@@ -472,8 +505,8 @@ class TestTestsDirNotAnError:
         # was appended as a hard error.
         tmp = Path(tempfile.mkdtemp())
         manifest = {
-            "name": "test-skill", "version": "1.0.0", "runtime": "python",
-            "api_version": 1, "entry": "main.py",
+            "name": "test-skill", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "main.py",
         }
         (tmp / "skill.json").write_text(json.dumps(manifest))
         (tmp / "main.py").write_text("# placeholder")
@@ -500,7 +533,8 @@ class TestTransitiveCycleDetection:
         manifest = {
             "name": "a", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"skills": ["b@^1.0.0"]},
+        "description": "test skill",
+    "dependencies": {"skills": ["b@^1.0.0"]},
         }
         reg = self.FakeRegistry({"b": ["a"]})
         errors = detect_dependency_cycles(manifest, reg)
@@ -511,7 +545,8 @@ class TestTransitiveCycleDetection:
         manifest = {
             "name": "a", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"skills": ["b@^1.0.0"]},
+        "description": "test skill",
+    "dependencies": {"skills": ["b@^1.0.0"]},
         }
         reg = self.FakeRegistry({"b": ["c"], "c": ["a"]})
         errors = detect_dependency_cycles(manifest, reg)
@@ -521,7 +556,8 @@ class TestTransitiveCycleDetection:
         manifest = {
             "name": "a", "version": "1.0.0", "runtime": "python",
             "api_version": 1, "entry": "main.py",
-            "dependencies": {"skills": ["b@^1.0.0", "c@^1.0.0"]},
+        "description": "test skill",
+    "dependencies": {"skills": ["b@^1.0.0", "c@^1.0.0"]},
         }
         reg = self.FakeRegistry({"b": ["c"], "c": []})
         errors = detect_dependency_cycles(manifest, reg)

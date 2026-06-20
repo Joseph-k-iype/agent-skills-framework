@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from skill_sdk.registry import RegistryClient
 from skill_sdk.validation import (
     load_manifest,
+    load_manifest_with_body,
     validate_full_skill,
     lint_full_skill,
     ValidationError,
@@ -46,7 +47,7 @@ class ScaffoldRequest(BaseModel):
 
 
 def _manifest_path(skill_dir: Path) -> Path | None:
-    for fname in ("skill.yaml", "skill.yml", "skill.json"):
+    for fname in ("SKILL.md", "skill.yaml", "skill.yml", "skill.json"):
         p = skill_dir / fname
         if p.exists():
             return p
@@ -127,9 +128,9 @@ def get_skill_manifest(name: str, registry: RegistryClient = Depends(get_registr
     if not manifest_path:
         raise HTTPException(status_code=404, detail="Manifest file not found")
     try:
-        manifest = load_manifest(manifest_path)
+        manifest, body = load_manifest_with_body(manifest_path)
         raw = manifest_path.read_text(encoding="utf-8")
-        return {"manifest": manifest, "raw": raw}
+        return {"manifest": manifest, "body": body, "raw": raw}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -271,9 +272,17 @@ def scaffold_skill(req: ScaffoldRequest, registry: RegistryClient = Depends(get_
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(content, encoding="utf-8")
 
-    (dest / "skill.yaml").write_text(
-        yaml.safe_dump(manifest, sort_keys=False, default_flow_style=False), encoding="utf-8"
-    )
+    from skill_sdk.validation import _parse_frontmatter, find_manifest_file
+
+    manifest.pop("id", None)
+    manifest.pop("body", None)
+    body = (req.manifest or {}).get("body", "")
+
+    frontmatter = yaml.safe_dump(manifest, sort_keys=False, default_flow_style=False).strip()
+    text = f"---\n{frontmatter}\n---"
+    if body:
+        text += f"\n\n{body.strip()}\n"
+    (dest / "SKILL.md").write_text(text, encoding="utf-8")
 
     errors = validate_full_skill(dest)
     if errors:

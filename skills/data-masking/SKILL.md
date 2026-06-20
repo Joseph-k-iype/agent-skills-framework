@@ -1,3 +1,4 @@
+---
 name: data-masking
 version: 0.1.0
 description: >
@@ -38,3 +39,20 @@ permissions:
     actions: [read, write]
   - resource: audit_log
     actions: [write]
+---
+
+# Data Masking
+
+Agent for applying PII and PHI masking policies to sensitive data fields.
+
+## Overview
+
+The Data Masking skill supports redaction, tokenization, encryption, and format-preserving masking. Integrates with data-discovery and data-tagging for sensitive column detection.
+
+## Triggers
+
+Responds to `policy.updated` and `asset.classified` events. Supports `/mask`, `/policies`, and `/discover-sensitive` commands.
+
+## Configuration
+
+Requires `masking_policies` (policy definitions) and `pii_endpoint` for PII data management.

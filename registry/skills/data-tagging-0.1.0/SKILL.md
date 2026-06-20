@@ -1,3 +1,4 @@
+---
 name: data-tagging
 version: 0.1.0
 description: 'Applies business and technical tags to data assets based on configurable
@@ -41,3 +42,20 @@ permissions:
   - read
   - write
 id: skill://sha256/7ec0dd12eb63e9eb44c3c44ffdb823fc0a8063638959561ad92e9f64572288d9/data-tagging@0.1.0
+---
+
+# Data Tagging
+
+Agent for applying business and technical tags to data assets.
+
+## Overview
+
+The Data Tagging skill applies tags based on configurable rules, with automatic propagation through column-level lineage. Depends on data-lineage for lineage relationships.
+
+## Triggers
+
+Responds to `asset.tagged` and `schema.updated` events. Supports `/apply-tags`, `/propagate`, and `/list-tags` commands.
+
+## Configuration
+
+Requires `tag_rules` (YAML-based rule definitions) and `tag_endpoint` for persisting tag assignments.

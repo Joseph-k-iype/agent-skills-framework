@@ -55,7 +55,7 @@ def require_api_key(
     hosted deployment set the env var and send it as ``X-API-Key`` or
     ``Authorization: Bearer <key>``. NOTE: the frontend role switcher is a UX
     preview only — it is NOT an authorization boundary. Real per-user authz is
-    an explicit, documented gap (see frontend/SECURITY.md).
+    an explicit, documented gap (see docs/security.md).
     """
     expected = os.environ.get(API_KEY_ENV)
     if not expected:

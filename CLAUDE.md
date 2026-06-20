@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-`AGENTS.md` is the human-facing overview (manifest field table, full CLI command list, domain skill catalog, FalkorDB graph model). Read it for reference; this file covers what you need to *work in* the repo — commands, the cross-file wiring, and the non-obvious gotchas.
+`AGENTS.md` is the human-facing overview (manifest field table, full CLI command list, domain skill catalog, FalkorDB graph model). [`docs/`](docs/README.md) is the full documentation set for the whole solution (architecture, Python/TypeScript SDK reference, CLI reference, skill manifest spec, content-addressing, testing, frontend, security) — read it for detail. This file covers what you need to *work in* the repo — commands, the cross-file wiring, and the non-obvious gotchas.
 
 ## Repo layout (multi-package, no install step)
 
