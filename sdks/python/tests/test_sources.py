@@ -74,3 +74,45 @@ def test_create_source_unknown():
     config = {"type": "s3"}
     with pytest.raises(ValueError, match="Unknown source type"):
         create_source(config)
+
+
+def test_local_source_latest_is_semver_max():
+    tmp = Path(tempfile.mkdtemp())
+    for v in ("0.9.0", "0.10.0", "0.2.0"):
+        d = tmp / f"my-skill-{v}"
+        d.mkdir()
+        (d / "skill.yaml").write_text(f"name: my-skill\nversion: {v}\n")
+    src = LocalSource(tmp)
+    skills = src.list_skills()
+    # Lexical max would be "0.9.0"; correct SemVer max is "0.10.0".
+    assert skills["my-skill"]["latest"] == "0.10.0"
+    assert set(skills["my-skill"]["versions"]) == {"0.9.0", "0.10.0", "0.2.0"}
+
+
+def test_local_source_hyphenated_name_and_prerelease():
+    tmp = Path(tempfile.mkdtemp())
+    (tmp / "data-discovery-1.0.0-rc.1").mkdir()
+    (tmp / "data-discovery-1.0.0-rc.1" / "skill.yaml").write_text("name: data-discovery\n")
+    src = LocalSource(tmp)
+    skills = src.list_skills()
+    assert "data-discovery" in skills
+    assert "1.0.0-rc.1" in skills["data-discovery"]["versions"]
+
+
+def test_local_source_ignores_dot_dirs():
+    tmp = Path(tempfile.mkdtemp())
+    (tmp / ".git").mkdir()
+    (tmp / "good-1.0.0").mkdir()
+    (tmp / "good-1.0.0" / "skill.yaml").write_text("name: good\n")
+    src = LocalSource(tmp)
+    assert set(src.list_skills().keys()) == {"good"}
+
+
+def test_create_source_local_missing_path():
+    with pytest.raises(ValueError, match="requires a 'path'"):
+        create_source({"type": "local"})
+
+
+def test_create_source_git_missing_url():
+    with pytest.raises(ValueError, match="requires a 'url'"):
+        create_source({"type": "git"})

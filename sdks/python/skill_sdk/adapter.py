@@ -125,11 +125,14 @@ def generate_skill_doc(manifest_path: str | Path, format: str = "markdown", outp
             "version": version,
             "runtime": runtime,
             "id": manifest.get("id", ""),
+            "description": manifest.get("description", ""),
+            "entry": manifest.get("entry", ""),
             "triggers": manifest.get("triggers", {}),
             "capabilities": manifest.get("capabilities", []),
             "config": manifest.get("config", {}),
             "dependencies": manifest.get("dependencies", {}),
             "permissions": manifest.get("permissions", []),
+            "lifecycle": manifest.get("lifecycle", {}),
         }
         import json
         text = json.dumps(result, indent=2)

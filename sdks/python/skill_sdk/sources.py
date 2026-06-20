@@ -50,17 +50,18 @@ class LocalSource(SkillSource):
     def list_skills(self) -> dict[str, Any]:
         if not self.path.exists():
             return {}
-        pattern = re.compile(r"^(.+)-(\d+\.\d+\.\d+)$")
         skills: dict[str, Any] = {}
         for entry in self.path.iterdir():
-            if not entry.is_dir():
+            if not entry.is_dir() or entry.name.startswith("."):
                 continue
-            m = pattern.match(entry.name)
+            m = _SKILL_DIR_RE.match(entry.name)
             if m:
-                name, version = m.group(1), m.group(2)
-                if name not in skills:
-                    skills[name] = {"versions": [], "latest": version}
-                skills[name]["versions"].append(version)
+                name, version = m.group("name"), m.group("version")
+                bucket = skills.setdefault(name, {"versions": [], "latest": ""})
+                if version not in bucket["versions"]:
+                    bucket["versions"].append(version)
+        for bucket in skills.values():
+            bucket["latest"] = max_version(bucket["versions"]) or ""
         return skills
 
 
@@ -74,6 +75,15 @@ class GitSource(SkillSource):
 
     def _ensure_clone(self) -> Path:
         if self._cache and self._cache.exists():
+            # Refresh tags so a cached clone doesn't serve a stale skill list.
+            try:
+                subprocess.run(
+                    ["git", "fetch", "--tags", "--force", "--quiet"],
+                    cwd=str(self._cache),
+                    capture_output=True, text=True, check=True,
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass
             return self._cache
         import tempfile
         tmp = Path(tempfile.mkdtemp()) / "repo"
@@ -82,6 +92,7 @@ class GitSource(SkillSource):
             capture_output=True, text=True, check=True,
         )
         if self._cache:
+            self._cache.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(tmp), str(self._cache))
             return self._cache
         return tmp
@@ -122,10 +133,11 @@ class GitSource(SkillSource):
                 parts = tag.strip().split("/")
                 if len(parts) >= 3:
                     name, version = parts[1], parts[2]
-                    if name not in skills:
-                        skills[name] = {"versions": [], "latest": version}
-                    if version not in skills[name]["versions"]:
-                        skills[name]["versions"].append(version)
+                    bucket = skills.setdefault(name, {"versions": [], "latest": ""})
+                    if version not in bucket["versions"]:
+                        bucket["versions"].append(version)
+            for bucket in skills.values():
+                bucket["latest"] = max_version(bucket["versions"]) or ""
             return skills
         except Exception:
             return {}
@@ -134,8 +146,12 @@ class GitSource(SkillSource):
 def create_source(config: dict[str, Any]) -> SkillSource:
     stype = config.get("type", "local")
     if stype == "local":
+        if "path" not in config:
+            raise ValueError("local source requires a 'path'")
         return LocalSource(config["path"])
     elif stype == "git":
+        if "url" not in config:
+            raise ValueError("git source requires a 'url'")
         return GitSource(
             url=config["url"],
             ref=config.get("ref", "main"),
