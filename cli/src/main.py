@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -19,10 +20,19 @@ from skill_sdk.registry import RegistryClient
 from skill_sdk.hashing import compute_skill_id, validate_skill_id
 from skill_sdk.adapter import generate_skill_doc
 from skill_sdk.graph import FalkorDBConnector
+from skill_sdk.git_verify import verify_against_git
+
+GRAPH_HOST_ENV = "SKILLS_GRAPH_HOST"
+GRAPH_PORT_ENV = "SKILLS_GRAPH_PORT"
 
 
 def _get_registry(args) -> RegistryClient:
-    return RegistryClient(args.registry or Path.cwd() / "registry")
+    host = getattr(args, "graph_host", None) or os.environ.get(GRAPH_HOST_ENV)
+    graph = None
+    if host:
+        port = getattr(args, "graph_port", None) or int(os.environ.get(GRAPH_PORT_ENV, 6379))
+        graph = FalkorDBConnector(host=host, port=port, enabled=True)
+    return RegistryClient(args.registry or Path.cwd() / "registry", graph=graph)
 
 
 def cmd_init(args):
@@ -237,22 +247,11 @@ def cmd_publish(args):
         if result.get("git_tag"):
             print(f"  Git tag: {result['git_tag']}")
 
-        if args.graph_host:
-            graph = FalkorDBConnector(
-                host=args.graph_host,
-                port=args.graph_port or 6379,
-                enabled=True,
-            )
-            import asyncio
-            connected = asyncio.run(graph.connect())
-            if connected:
-                from skill_sdk.validation import find_manifest_file
-                manifest_path = find_manifest_file(Path(result["path"]))
-                if manifest_path:
-                    gr = graph.register_skill(manifest_path)
-                    if gr.get("status") == "registered":
-                        print(f"  Graph: registered [{gr['id']}]")
-                graph.disconnect()
+        graph_result = result.get("graph")
+        if graph_result and graph_result.get("status") == "registered":
+            print(f"  Graph: registered [{graph_result['id']}]")
+        elif graph_result and graph_result.get("status") == "error":
+            print(f"  Graph: error ({graph_result['error']})")
 
     except ValidationError as e:
         print(f"✗ Publish failed: {e}")
@@ -332,6 +331,29 @@ def cmd_verify(args):
             sys.exit(1)
     except ValidationError as e:
         print(f"✗ {e}")
+        sys.exit(1)
+
+
+def cmd_verify_git(args):
+    if not args.all and not args.name:
+        print("✗ Provide a skill name or pass --all")
+        sys.exit(1)
+
+    registry = _get_registry(args)
+    names = list(registry.list_skills().keys()) if args.all else [args.name]
+
+    failures = 0
+    for name in names:
+        result = verify_against_git(registry, name, args.version)
+        if result["valid"] is True:
+            print(f"✓ {result['name']}@{result['version']} matches git tag {result['git_tag']}")
+        elif result["valid"] is None:
+            print(f"– {result['name']}@{result.get('version', '?')}: skipped ({result['reason']})")
+        else:
+            failures += 1
+            print(f"✗ {name}: {'; '.join(result.get('errors', ['verification failed']))}")
+
+    if failures:
         sys.exit(1)
 
 
@@ -458,6 +480,14 @@ def main():
     verify_p.add_argument("--registry", help="Path to registry directory")
     verify_p.add_argument("--version", help="Version to verify (default: latest)")
 
+    verify_git_p = sub.add_parser(
+        "verify-git", help="Cross-check a published skill's id against its git tag"
+    )
+    verify_git_p.add_argument("name", nargs="?", help="Skill name (omit with --all)")
+    verify_git_p.add_argument("--registry", help="Path to registry directory")
+    verify_git_p.add_argument("--version", help="Version to verify (default: latest)")
+    verify_git_p.add_argument("--all", action="store_true", help="Verify every skill with a recorded git tag")
+
     sync_p = sub.add_parser("sync", help="Sync registry from remote sources")
     sync_p.add_argument("--registry", help="Path to registry directory")
     sync_p.add_argument("--source-type", choices=["git"], help="Source type to add")
@@ -494,6 +524,7 @@ def main():
         "info": cmd_info,
         "doc": cmd_doc,
         "verify": cmd_verify,
+        "verify-git": cmd_verify_git,
         "sync": cmd_sync,
         "graph": cmd_graph,
     }

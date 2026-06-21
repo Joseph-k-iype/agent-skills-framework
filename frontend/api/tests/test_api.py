@@ -26,6 +26,7 @@ def _manifest(name="demo-skill", version="1.0.0"):
     return {
         "name": name,
         "version": version,
+        "description": "a demo skill for tests",
         "runtime": "python",
         "api_version": 1,
         "entry": "src/main.py",
@@ -73,6 +74,7 @@ class TestScaffoldPublishInstall:
         assert row["valid"] is True
         assert row["runtime"] == "python"
         assert row["permissions"] == 1
+        assert row["permission_details"] == [{"resource": "db", "actions": ["read"]}]
 
         # install into the workspace sandbox
         ri = client.post("/api/skills/demo-skill/install", json={"verify": True})
@@ -92,6 +94,24 @@ class TestScaffoldPublishInstall:
         body = r.json()
         assert body["success"] is False
         assert body["errors"]
+
+
+class TestImpact:
+    def test_downstream_impact(self, client):
+        client.post("/api/skills/scaffold", json={"manifest": _manifest(name="base-skill"), "publish": True})
+        dependent = _manifest(name="dependent-skill")
+        dependent["dependencies"] = {"skills": ["base-skill@^1.0.0"]}
+        client.post("/api/skills/scaffold", json={"manifest": dependent, "publish": True})
+
+        impact = client.get("/api/skills/base-skill/impact").json()
+        assert impact == {"downstream": ["dependent-skill"], "count": 1}
+
+        leaf_impact = client.get("/api/skills/dependent-skill/impact").json()
+        assert leaf_impact == {"downstream": [], "count": 0}
+
+    def test_impact_unknown_skill_404s(self, client):
+        r = client.get("/api/skills/no-such-skill/impact")
+        assert r.status_code == 404
 
 
 class TestVersionsSorted:

@@ -445,6 +445,31 @@ def detect_dependency_cycles(manifest: dict[str, Any], registry_client: Any = No
     return errors
 
 
+def find_downstream_skills(name: str, registry_client: Any) -> list[str]:
+    """Transitive list of skills that depend on ``name``, directly or indirectly.
+
+    Built from a reverse adjacency map over the registry's declared skill
+    dependencies — the same data ``detect_dependency_cycles`` walks forward,
+    traversed backward here to answer "what breaks if I change this skill?"
+    """
+    reverse_deps: dict[str, list[str]] = {}
+    for skill_name in registry_client.list_skills():
+        for dep in registry_client.get_skill_dependencies(skill_name):
+            reverse_deps.setdefault(dep, []).append(skill_name)
+
+    downstream: list[str] = []
+    seen: set[str] = {name}
+    queue = list(reverse_deps.get(name, []))
+    while queue:
+        node = queue.pop(0)
+        if node in seen:
+            continue
+        seen.add(node)
+        downstream.append(node)
+        queue.extend(reverse_deps.get(node, []))
+    return downstream
+
+
 def validate_manifest_with_path(manifest: dict[str, Any], skill_root: str | Path) -> list[str]:
     errors = validate_manifest(manifest)
     errors.extend(validate_skill_id(manifest, skill_root))

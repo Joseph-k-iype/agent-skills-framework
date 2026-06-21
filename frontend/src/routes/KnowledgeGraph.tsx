@@ -67,7 +67,7 @@ export default function KnowledgeGraph() {
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [capability, setCapability] = useState('')
-  const [queryMode, setQueryMode] = useState<'capability' | 'impact'>('capability')
+  const [queryMode, setQueryMode] = useState<'capability' | 'impact' | 'permission'>('capability')
   const [queryResults, setQueryResults] = useState<any[] | null>(null)
 
   const { data: skills } = useQuery({
@@ -111,7 +111,9 @@ export default function KnowledgeGraph() {
       const result = await api.graph.query(
         queryMode === 'capability'
           ? { capability: capability.trim() }
-          : { impact_id: capability.trim() }
+          : queryMode === 'impact'
+            ? { impact_id: capability.trim() }
+            : { permission_resource: capability.trim() }
       )
       setQueryResults(result.results)
     } catch {
@@ -191,13 +193,25 @@ export default function KnowledgeGraph() {
               >
                 Impact Analysis
               </button>
+              <button
+                onClick={() => setQueryMode('permission')}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  queryMode === 'permission'
+                    ? 'bg-brand-600 text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                By Permission
+              </button>
             </div>
             <input
               className="input flex-1"
               placeholder={
                 queryMode === 'capability'
                   ? 'Search skills by capability...'
-                  : 'Skill ID for impact analysis...'
+                  : queryMode === 'impact'
+                    ? 'Skill ID for impact analysis...'
+                    : 'Search skills by permission resource...'
               }
               value={capability}
               onChange={(e) => setCapability(e.target.value)}

@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from skill_sdk.graph import FalkorDBConnector
 from skill_sdk.registry import RegistryClient
+
+GRAPH_HOST_ENV = "SKILLS_GRAPH_HOST"
+GRAPH_PORT_ENV = "SKILLS_GRAPH_PORT"
 
 _registry_path = Path(__file__).parent.parent.parent / "registry"
 _registry_client: RegistryClient | None = None
@@ -14,6 +19,11 @@ def get_registry_path() -> Path:
 def get_registry() -> RegistryClient:
     global _registry_client
     if _registry_client is None:
-        _registry_client = RegistryClient(get_registry_path())
+        graph = None
+        host = os.environ.get(GRAPH_HOST_ENV)
+        if host:
+            port = int(os.environ.get(GRAPH_PORT_ENV, 6379))
+            graph = FalkorDBConnector(host=host, port=port, enabled=True)
+        _registry_client = RegistryClient(get_registry_path(), graph=graph)
         _registry_client.auto_tag = False
     return _registry_client

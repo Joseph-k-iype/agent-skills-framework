@@ -11,6 +11,7 @@ from skill_sdk.validation import (
     load_manifest_with_body,
     validate_full_skill,
     lint_full_skill,
+    find_downstream_skills,
     ValidationError,
 )
 from skill_sdk.hashing import compute_skill_id
@@ -83,6 +84,7 @@ def skills_compliance(registry: RegistryClient = Depends(get_registry)):
         rel = entry.get("locations", {}).get("local")
         runtime = ""
         permissions = 0
+        permission_details: list[dict] = []
         capabilities = 0
         valid = None
         errors: list[str] = []
@@ -95,7 +97,8 @@ def skills_compliance(registry: RegistryClient = Depends(get_registry)):
                 try:
                     m = load_manifest(mpath)
                     runtime = m.get("runtime", "")
-                    permissions = len(m.get("permissions", []) or [])
+                    permission_details = m.get("permissions", []) or []
+                    permissions = len(permission_details)
                     capabilities = len(m.get("capabilities", []) or [])
                 except ValidationError:
                     pass
@@ -105,6 +108,7 @@ def skills_compliance(registry: RegistryClient = Depends(get_registry)):
             "runtime": runtime,
             "valid": valid,
             "permissions": permissions,
+            "permission_details": permission_details,
             "capabilities": capabilities,
             "errors": errors,
         })
@@ -162,6 +166,16 @@ def get_skill_versions(name: str, registry: RegistryClient = Depends(get_registr
         "latest": info.get("latest", ""),
         "ids": info.get("ids", {}),
     }
+
+
+@router.get("/{name}/impact")
+def get_skill_impact(name: str, registry: RegistryClient = Depends(get_registry)):
+    try:
+        registry.info(name)
+    except ValidationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    downstream = find_downstream_skills(name, registry)
+    return {"downstream": downstream, "count": len(downstream)}
 
 
 @router.post("/{name}/validate")

@@ -85,6 +85,21 @@ class TestPublish:
             registry.publish(tmp)
 
 
+class TestGraphSync:
+    def test_publish_without_graph_has_no_graph_key_disruption(self, registry, valid_skill):
+        result = registry.publish(valid_skill)
+        assert result.get("graph") is None
+
+    def test_publish_with_disabled_graph_skips(self, valid_skill):
+        from skill_sdk.graph import FalkorDBConnector
+
+        tmp = Path(tempfile.mkdtemp())
+        registry = RegistryClient(tmp, auto_tag=False, graph=FalkorDBConnector(enabled=False))
+        result = registry.publish(valid_skill)
+        assert result["graph"] == {"status": "skipped", "reason": "not connected"}
+        shutil.rmtree(tmp)
+
+
 class TestList:
     def test_empty(self, registry):
         skills = registry.list_skills()

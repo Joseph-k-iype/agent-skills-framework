@@ -50,6 +50,11 @@ def test_find_skills_by_capability_empty(connector):
     assert result == []
 
 
+def test_find_skills_by_permission_empty(connector):
+    result = connector.find_skills_by_permission("test:resource")
+    assert result == []
+
+
 def test_find_impact_empty(connector):
     result = connector.find_impact("some-id")
     assert result == []
@@ -62,9 +67,11 @@ def test_graph_queries_present():
         "link_version_to_skill",
         "link_capability",
         "link_dependency",
+        "link_permission",
         "register_deployment",
         "find_impact",
         "find_skill_by_capability",
+        "find_skill_by_permission",
         "get_dependency_chain",
         "list_deployments",
     ]
@@ -94,6 +101,7 @@ def test_register_skill_integration(mock_load):
         "entry": "main.py",
         "capabilities": ["test:cap"],
         "dependencies": {"skills": ["other-skill@^1.0.0"]},
+        "permissions": [{"resource": "filesystem:workspace", "actions": ["read", "write"]}],
     }
 
     manifest_path = Path(tempfile.mktemp(suffix=".json"))

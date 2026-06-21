@@ -30,6 +30,12 @@ MATCH (a:SkillVersion {id: $a_id})
 MERGE (b:Skill {name: $dep_name})
 MERGE (a)-[:DEPENDS_ON]->(b)
 """,
+    "link_permission": """
+MATCH (sv:SkillVersion {id: $id})
+MERGE (p:Permission {resource: $resource})
+MERGE (sv)-[r:REQUESTS]->(p)
+ON CREATE SET r.actions = $actions
+""",
     "register_deployment": """
 MATCH (sv:SkillVersion {id: $skill_id})
 MERGE (d:Deployment {id: $deployment_id})
@@ -44,6 +50,10 @@ RETURN sv, dep, upstream
     "find_skill_by_capability": """
 MATCH (c:Capability {name: $capability})<-[:PROVIDES]-(sv:SkillVersion)-[:VERSION_OF]->(s:Skill)
 RETURN s.name, sv.version, sv.id
+""",
+    "find_skill_by_permission": """
+MATCH (p:Permission {resource: $resource})<-[:REQUESTS]-(sv:SkillVersion)-[:VERSION_OF]->(s:Skill)
+RETURN s.name, sv.version, p.resource
 """,
     "get_dependency_chain": """
 MATCH path = (sv:SkillVersion {id: $id})-[:DEPENDS_ON*]->(dep:Skill)
@@ -160,6 +170,12 @@ class FalkorDBConnector:
                     "a_id": skill_id,
                     "dep_name": dep_name,
                 })
+            for perm in manifest.get("permissions", []):
+                self.graph.query(GRAPH_QUERIES["link_permission"], {
+                    "id": skill_id,
+                    "resource": perm.get("resource", ""),
+                    "actions": perm.get("actions", []),
+                })
             return {"status": "registered", "id": skill_id, "name": name, "version": version}
         except Exception as e:
             return {"status": "error", "error": str(e)}
@@ -183,6 +199,17 @@ class FalkorDBConnector:
                 "name": row[0],
                 "version": row[1],
                 "id": row[2],
+            })
+        return skills
+
+    def find_skills_by_permission(self, resource: str) -> list[dict[str, Any]]:
+        results = self.query(GRAPH_QUERIES["find_skill_by_permission"], {"resource": resource})
+        skills = []
+        for row in results:
+            skills.append({
+                "name": row[0],
+                "version": row[1],
+                "resource": row[2],
             })
         return skills
 

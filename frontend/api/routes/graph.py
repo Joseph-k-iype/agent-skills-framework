@@ -26,6 +26,7 @@ class GraphQueryRequest(BaseModel):
     port: int = 6379
     capability: str | None = None
     impact_id: str | None = None
+    permission_resource: str | None = None
 
 
 @router.post("/connect")
@@ -69,9 +70,11 @@ async def query_graph(req: GraphQueryRequest):
         results = graph.find_skills_by_capability(req.capability)
     elif req.impact_id:
         results = graph.find_impact(req.impact_id)
+    elif req.permission_resource:
+        results = graph.find_skills_by_permission(req.permission_resource)
     else:
         graph.disconnect()
-        raise HTTPException(status_code=400, detail="Provide capability or impact_id")
+        raise HTTPException(status_code=400, detail="Provide capability, impact_id, or permission_resource")
 
     graph.disconnect()
     return {"results": results}

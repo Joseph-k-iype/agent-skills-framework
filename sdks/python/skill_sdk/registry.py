@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -10,6 +11,7 @@ from typing import Any, Iterator
 
 import yaml
 
+from .graph import FalkorDBConnector
 from .hashing import compute_skill_id
 from .validation import (
     load_manifest,
@@ -18,7 +20,7 @@ from .validation import (
     detect_dependency_cycles,
     _dep_names,
 )
-from .versioning import git_tag_skill, git_tag_exists, max_version
+from .versioning import find_repo_root, git_tag_skill, git_tag_exists, max_version
 from .sources import create_source
 
 try:  # POSIX file locking for cross-process safety; degrades gracefully elsewhere.
@@ -39,19 +41,36 @@ def _empty_index() -> dict[str, Any]:
 
 
 class RegistryClient:
-    def __init__(self, registry_path: str | Path, auto_tag: bool = True):
+    def __init__(
+        self,
+        registry_path: str | Path,
+        auto_tag: bool = True,
+        graph: FalkorDBConnector | None = None,
+    ):
         self.registry_path = Path(registry_path).resolve()
         self.index_path = self.registry_path / "index.yaml"
         self.auto_tag = auto_tag
+        self.graph = graph
         self._repo_root: Path | None = None
 
     # -- low level ----------------------------------------------------------
 
     def _find_repo_root(self, start: Path) -> Path | None:
-        for parent in [start] + list(start.parents):
-            if (parent / ".git").exists():
-                return parent
-        return None
+        return find_repo_root(start)
+
+    def _sync_graph(self, manifest_path: Path) -> dict[str, Any] | None:
+        """Best-effort FalkorDB registration; never raises out of ``publish()``."""
+        if self.graph is None:
+            return None
+        try:
+            connected = asyncio.run(self.graph.connect())
+            if not connected:
+                return {"status": "skipped", "reason": "not connected"}
+            result = self.graph.register_skill(manifest_path)
+            self.graph.disconnect()
+            return result
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
     def _ensure_registry(self):
         self.registry_path.mkdir(parents=True, exist_ok=True)
@@ -207,12 +226,16 @@ class RegistryClient:
             self._register_in_index(index, name, version, dest, skill_id, git_tag)
             self._save_index(index)
 
+        # Graph sync is network I/O — never hold the index file lock for it.
+        graph_result = self._sync_graph(dest_manifest)
+
         return {
             "name": name,
             "version": version,
             "id": skill_id,
             "path": str(dest),
             "git_tag": git_tag,
+            "graph": graph_result,
         }
 
     def _register_in_index(

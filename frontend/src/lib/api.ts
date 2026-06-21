@@ -74,6 +74,8 @@ export const api = {
         body: JSON.stringify(body),
       }),
     compliance: () => fetchJSON<{ skills: import('./types').ComplianceRow[] }>('/skills/compliance'),
+    impact: (name: string) =>
+      fetchJSON<import('./types').ImpactResult>(`/skills/${encodeURIComponent(name)}/impact`),
   },
 
   audit: {
@@ -106,7 +108,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ host, port, manifest_path: manifestPath }),
       }),
-    query: (params: { capability?: string; impact_id?: string }) =>
+    query: (params: { capability?: string; impact_id?: string; permission_resource?: string }) =>
       fetchJSON<import('./types').GraphQueryResult>('/graph/query', {
         method: 'POST',
         body: JSON.stringify({ ...params, host: 'localhost', port: 6379 }),

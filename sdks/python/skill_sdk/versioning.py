@@ -309,6 +309,15 @@ def max_version(versions: list[str]) -> str | None:
     return parsed[-1][1]
 
 
+def find_repo_root(start: str | Path) -> Path | None:
+    """Walk up from ``start`` looking for the nearest ``.git`` directory."""
+    start = Path(start)
+    for parent in [start] + list(start.parents):
+        if (parent / ".git").exists():
+            return parent
+    return None
+
+
 def git_tag_skill(name: str, version: str, skill_id: str, repo_root: str | Path) -> None:
     tag = f"skill/{name}/{version}"
     msg = f"Skill: {name}@{version}\nID: {skill_id}"

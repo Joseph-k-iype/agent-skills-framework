@@ -11,6 +11,7 @@ from skill_sdk.validation import (
     validate_full_skill,
     validate_manifest_with_path,
     detect_dependency_cycles,
+    find_downstream_skills,
     ValidationError,
     load_manifest,
 )
@@ -562,3 +563,32 @@ class TestTransitiveCycleDetection:
         reg = self.FakeRegistry({"b": ["c"], "c": []})
         errors = detect_dependency_cycles(manifest, reg)
         assert errors == []
+
+
+class TestFindDownstreamSkills:
+    class FakeRegistry:
+        def __init__(self, deps):
+            self.deps = deps
+
+        def list_skills(self):
+            return {name: {} for name in self.deps}
+
+        def get_skill_dependencies(self, name):
+            return self.deps.get(name, [])
+
+    def test_transitive_downstream(self):
+        # a <- b <- c  (b depends on a, c depends on b)
+        reg = self.FakeRegistry({"a": [], "b": ["a"], "c": ["b"]})
+        downstream = find_downstream_skills("a", reg)
+        assert set(downstream) == {"b", "c"}
+
+    def test_no_dependents(self):
+        reg = self.FakeRegistry({"a": [], "b": []})
+        assert find_downstream_skills("a", reg) == []
+
+    def test_diamond_dependents_deduplicated(self):
+        # a <- b, a <- c, b <- d, c <- d  (d depends on both b and c)
+        reg = self.FakeRegistry({"a": [], "b": ["a"], "c": ["a"], "d": ["b", "c"]})
+        downstream = find_downstream_skills("a", reg)
+        assert set(downstream) == {"b", "c", "d"}
+        assert len(downstream) == 3

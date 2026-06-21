@@ -88,12 +88,23 @@ export interface ScaffoldResult {
   scaffolded?: boolean
 }
 
+export interface PermissionDetail {
+  resource: string
+  actions: string[]
+}
+
+export interface ImpactResult {
+  downstream: string[]
+  count: number
+}
+
 export interface ComplianceRow {
   name: string
   latest: string
   runtime: string
   valid: boolean | null
   permissions: number
+  permission_details: PermissionDetail[]
   capabilities: number
   errors: string[]
 }
