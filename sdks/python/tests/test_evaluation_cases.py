@@ -92,7 +92,10 @@ def _task_case(**over):
     case = {
         "id": "t1",
         "input": {"type": "task", "prompt": "do the thing"},
-        "expect": {"mode": "assertions", "assertions": [{"kind": "file_exists", "path": "out.txt"}]},
+        "expect": {
+            "mode": "assertions",
+            "assertions": [{"kind": "file_exists", "path": "out.txt"}],
+        },
     }
     case.update(over)
     return case
