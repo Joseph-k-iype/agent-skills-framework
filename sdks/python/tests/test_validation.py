@@ -592,3 +592,33 @@ class TestFindDownstreamSkills:
         downstream = find_downstream_skills("a", reg)
         assert set(downstream) == {"b", "c", "d"}
         assert len(downstream) == 3
+
+
+class TestFrontmatterEmbeddedHorizontalRule:
+    def test_unindented_dashes_inside_block_scalar_does_not_truncate(self):
+        # A naive "\n---" substring search would treat the unindented "---"
+        # inside this block-scalar description as the closing delimiter,
+        # silently dropping `version`/`runtime`/etc. (which appear after it)
+        # into the leftover "body" text instead of raising a parse error.
+        content = (
+            "---\n"
+            "name: test-skill\n"
+            "description: |-\n"
+            "  line one\n"
+            "  ---\n"
+            "  line two\n"
+            "version: 1.0.0\n"
+            "runtime: python\n"
+            "api_version: 1\n"
+            "entry: src/main.py\n"
+            "---\n"
+            "Body text.\n"
+        )
+        tmp = Path(tempfile.mkdtemp())
+        manifest_path = tmp / "SKILL.md"
+        manifest_path.write_text(content)
+        manifest = load_manifest(manifest_path)
+        assert manifest["name"] == "test-skill"
+        assert manifest["version"] == "1.0.0"
+        assert manifest["runtime"] == "python"
+        assert "---" in manifest["description"]

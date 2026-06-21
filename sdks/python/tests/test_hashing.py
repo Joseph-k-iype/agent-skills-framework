@@ -233,3 +233,16 @@ def test_prerelease_version_in_id(minimal_manifest):
     name, ver = name_version_from_skill_id(sid)
     assert name == "test-skill"
     assert ver == "1.0.0-rc.1"
+
+
+def test_unreadable_file_raises_instead_of_corrupting_hash(minimal_manifest):
+    tmp = Path(tempfile.mkdtemp())
+    _write(tmp, "main.py", "x")
+    unreadable = tmp / "secret.py"
+    unreadable.write_text("y")
+    unreadable.chmod(0o000)
+    try:
+        with pytest.raises(OSError):
+            compute_skill_id(minimal_manifest, tmp)
+    finally:
+        unreadable.chmod(0o644)

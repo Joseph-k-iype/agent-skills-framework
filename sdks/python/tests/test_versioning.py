@@ -184,3 +184,16 @@ class TestIsSemver:
     def test_rejects_partial(self):
         assert not is_semver("1.0")
         assert not is_semver("v1.0.0")
+
+    def test_rejects_leading_zeros(self):
+        # Per the SemVer BNF, numeric identifiers must not have leading zeros.
+        assert not is_semver("01.0.0")
+        assert not is_semver("1.00.0")
+        assert not is_semver("1.0.00")
+        assert not is_semver("1.0.0-01")
+
+    def test_accepts_alphanumeric_prerelease_with_leading_digit(self):
+        # Only *purely numeric* identifiers are restricted — "0a" contains a
+        # letter, so it's an alphanumeric identifier and leading zeros are fine.
+        assert is_semver("1.0.0-0a")
+        assert is_semver("1.0.0-0")

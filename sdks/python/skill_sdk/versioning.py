@@ -6,14 +6,26 @@ from pathlib import Path
 
 from .validation import ValidationError
 
+# Per the official SemVer BNF, numeric identifiers (major/minor/patch, and any
+# purely-numeric prerelease identifier) must not have leading zeros — "01.0.0"
+# and "1.0.0-01" are both invalid. An identifier containing a letter or hyphen
+# is "alphanumeric" and is exempt from that rule (e.g. "1.0.0-0a" is fine).
+_NUMERIC_ID = r"(?:0|[1-9]\d*)"
+_PRERELEASE_ID = r"(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)"
+_BUILD_ID = r"[0-9A-Za-z-]+"
+
 # Core ``MAJOR.MINOR.PATCH`` with optional ``-prerelease`` and ``+build`` metadata.
 # Exposed (without anchors) so other modules can embed it in larger patterns
 # (directory names, skill-id URIs, git tags) and keep one source of truth.
-SEMVER_PATTERN = r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?"
+SEMVER_PATTERN = (
+    rf"{_NUMERIC_ID}\.{_NUMERIC_ID}\.{_NUMERIC_ID}"
+    rf"(?:-{_PRERELEASE_ID}(?:\.{_PRERELEASE_ID})*)?"
+    rf"(?:\+{_BUILD_ID}(?:\.{_BUILD_ID})*)?"
+)
 _FULL_SEMVER_RE = re.compile(
-    r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
-    r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?"
-    r"(?:\+(?P<build>[0-9A-Za-z.-]+))?$"
+    rf"^(?P<major>{_NUMERIC_ID})\.(?P<minor>{_NUMERIC_ID})\.(?P<patch>{_NUMERIC_ID})"
+    rf"(?:-(?P<prerelease>{_PRERELEASE_ID}(?:\.{_PRERELEASE_ID})*))?"
+    rf"(?:\+(?P<build>{_BUILD_ID}(?:\.{_BUILD_ID})*))?$"
 )
 
 

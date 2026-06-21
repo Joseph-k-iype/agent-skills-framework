@@ -30,11 +30,21 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str] | None:
     if not stripped.startswith("---"):
         return None
     stripped = stripped[3:]
-    end = stripped.find("\n---")
-    if end == -1:
+    # The closing delimiter must be a line consisting of exactly "---" (a
+    # plain substring search for "\n---" would also match an unindented
+    # "---" line that happens to appear inside a YAML block-scalar value,
+    # e.g. a `description: |-` field whose content includes a markdown
+    # horizontal rule \u2014 truncating the manifest silently instead of raising).
+    lines = stripped.split("\n")
+    end_line = None
+    for i, line in enumerate(lines):
+        if line.rstrip() == "---":
+            end_line = i
+            break
+    if end_line is None:
         return None
-    yaml_block = stripped[:end]
-    body = stripped[end + 4:].lstrip("\n")
+    yaml_block = "\n".join(lines[:end_line])
+    body = "\n".join(lines[end_line + 1:]).lstrip("\n")
     try:
         manifest = yaml.safe_load(yaml_block)
     except yaml.YAMLError:

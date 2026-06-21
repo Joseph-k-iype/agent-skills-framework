@@ -45,7 +45,7 @@ MERGE (sv)-[:DEPLOYED_AT]->(d)
     "find_impact": """
 MATCH (sv:SkillVersion {id: $id})-[:DEPENDS_ON*]->(dep:Skill)
 OPTIONAL MATCH (dep)<-[:DEPENDS_ON]-(upstream:SkillVersion)
-RETURN sv, dep, upstream
+RETURN sv.id, dep.name, upstream.id
 """,
     "find_skill_by_capability": """
 MATCH (c:Capability {name: $capability})<-[:PROVIDES]-(sv:SkillVersion)-[:VERSION_OF]->(s:Skill)
@@ -185,9 +185,9 @@ class FalkorDBConnector:
         impacted = []
         for row in results:
             impacted.append({
-                "skill": str(row[0]),
-                "dependency": str(row[1]) if len(row) > 1 else "",
-                "upstream": str(row[2]) if len(row) > 2 else "",
+                "skill": row[0] or "",
+                "dependency": row[1] if len(row) > 1 and row[1] is not None else "",
+                "upstream": row[2] if len(row) > 2 and row[2] is not None else "",
             })
         return impacted
 
