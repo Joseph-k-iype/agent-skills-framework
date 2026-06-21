@@ -63,9 +63,16 @@ Calls `RegistryClient.publish()` — see
 for what this does and does not mutate. `--force` overwrites an existing
 `name@version` in the registry. `--no-tag` skips creating the
 `skill/<name>/<version>` git tag (tagging is otherwise controlled by the
-registry's `auto_tag` setting). If `--graph-host` is given, also attempts to
-register the published skill into a running FalkorDB instance afterward
-(best-effort — failure to connect doesn't fail the publish).
+registry's `auto_tag` setting).
+
+FalkorDB graph sync now happens automatically as part of every `publish()`
+call (best-effort — a failure to connect never fails the publish). Point it
+at a running instance either with `--graph-host`/`--graph-port`, or by
+setting the `SKILLS_GRAPH_HOST`/`SKILLS_GRAPH_PORT` env vars (the flags take
+precedence when both are set). The same env vars are read by the frontend API
+(`frontend/api/deps.py`), so the dashboard's publish/scaffold routes get graph
+sync for free with no separate configuration. With neither set, `publish()`
+behaves exactly as before — no graph dependency at all.
 
 ## `install <name>`
 

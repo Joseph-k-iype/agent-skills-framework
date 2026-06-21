@@ -1,7 +1,7 @@
 PYTHON ?= python3
 SDK := sdks/python
 
-.PHONY: test test-py test-ts test-sdk test-cli test-skill test-harness lint install-ts
+.PHONY: test test-py test-ts test-sdk test-cli test-skill test-harness lint install-ts verify-published
 
 test: ## Run every suite (Python + TypeScript)
 	bash scripts/run_tests.sh
@@ -28,3 +28,6 @@ install-ts:
 
 lint:
 	cd $(SDK) && ruff check .
+
+verify-published: ## Cross-check every published skill's id against its git tag
+	PYTHONPATH=$(SDK) $(PYTHON) cli/src/main.py verify-git --all --registry registry
