@@ -56,6 +56,14 @@ class Skill(BaseSkill):
                 data={"traced": len(tables)},
                 message=f"Traced lineage for {len(tables)} tables",
             )
+        elif event.name == "schema.changed":
+            table = event.payload.get("table", "")
+            impacts = await self._impact_analysis(table)
+            return SkillResult(
+                status="success",
+                data={"table": table, "impacted_assets": impacts},
+                message=f"Schema change in {table} affects {len(impacts)} downstream assets",
+            )
         return SkillResult(status="success", message=f"Handled event: {event.name}")
 
     async def handle_command(self, command: SkillCommand) -> SkillResult:

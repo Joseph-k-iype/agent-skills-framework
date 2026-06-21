@@ -16,7 +16,9 @@ def _now_iso() -> str:
     return datetime.datetime.now(datetime.UTC).isoformat()
 
 
-def _run_deterministic_cases(skill_path: Path, eval_cases: list[dict[str, Any]], report: EvaluationReport) -> list[dict[str, Any]]:
+def _run_deterministic_cases(
+    skill_path: Path, eval_cases: list[dict[str, Any]], report: EvaluationReport
+) -> list[dict[str, Any]]:
     """Run every non-llm_judged case in plain code (no model required) and fold
     the results into ``report.test_executor``. Returns the llm_judged cases'
     pending-judgment results, left for the agentic pass (if any) to score."""

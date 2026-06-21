@@ -44,6 +44,15 @@ class Skill(BaseSkill):
                 data={"tags_applied": len(tags), "propagated": propagated},
                 message=f"Applied {len(tags)} tags to {asset.get('name', 'unknown')}",
             )
+        elif event.name == "schema.updated":
+            asset = event.payload.get("asset", {})
+            tags = await self._resolve_tags(asset)
+            propagated = await self._propagate_tags(asset.get("id", ""), tags)
+            return SkillResult(
+                status="success",
+                data={"tags_applied": len(tags), "propagated": propagated},
+                message=f"Re-tagged {asset.get('name', 'unknown')} after schema update: {len(tags)} tags",
+            )
         return SkillResult(status="success", message=f"Handled event: {event.name}")
 
     async def handle_command(self, command: SkillCommand) -> SkillResult:
@@ -57,6 +66,15 @@ class Skill(BaseSkill):
                 status="success",
                 data={"assets_tagged": len(assets), "total_tags": total},
                 message=f"Applied {total} tags across {len(assets)} assets",
+            )
+        elif command.name == "/propagate":
+            asset_id = command.payload.get("asset_id", "")
+            tags = command.payload.get("tags", [])
+            propagated = await self._propagate_tags(asset_id, tags)
+            return SkillResult(
+                status="success",
+                data={"asset_id": asset_id, "propagated": propagated},
+                message=f"Propagated {propagated} tags from {asset_id or 'unknown asset'}",
             )
         elif command.name == "/list-tags":
             return SkillResult(

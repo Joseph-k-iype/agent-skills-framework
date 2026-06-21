@@ -1,0 +1,45 @@
+version: 1
+cases:
+  - id: trace-returns-column-level-lineage
+    description: "/trace returns the upstream lineage chain for a given table.column"
+    input:
+      type: command
+      name: /trace
+      payload: {table: dim_orders, column: customer_id}
+    expect: {mode: contains, value: {message: "dim_orders.customer_id"}}
+
+  - id: lineage-graph-returns-nodes-and-edges
+    description: "/lineage-graph builds a graph with both nodes and edges for the requested table"
+    input: {type: command, name: /lineage-graph, payload: {table: fact_sales}}
+    expect: {mode: exact_match, value: {status: success}}
+
+  - id: impact-analysis-lists-downstream-assets
+    description: "/impact-analysis reports how many downstream assets would be affected"
+    input: {type: command, name: /impact-analysis, payload: {table: raw_orders}}
+    expect: {mode: contains, value: {message: "downstream assets affected"}}
+
+  - id: schema-changed-event-reruns-impact-analysis
+    description: "schema.changed re-checks downstream impact for the table whose schema changed"
+    input: {type: event, name: schema.changed, payload: {table: raw_orders}}
+    expect: {mode: contains, value: {message: "downstream assets"}}
+
+  - id: unknown-command-is-an-error
+    description: "An unrecognized command surfaces status=error rather than crashing"
+    input: {type: command, name: /nope, args: []}
+    expect: {mode: exact_match, value: {status: error}}
+
+  - id: pipeline-completed-event-traces-affected-tables
+    description: "pipeline.completed reports how many tables had lineage traced"
+    input: {type: event, name: pipeline.completed, payload: {tables: [dim_orders, fact_sales]}}
+    expect: {mode: exact_match, value: {status: success, traced: 2}}
+
+  - id: impact-analysis-is-actionable-for-a-pipeline-owner
+    description: "Impact analysis output should let a pipeline owner judge blast radius before a schema change"
+    input: {type: command, name: /impact-analysis, payload: {table: raw_orders}}
+    expect:
+      mode: llm_judged
+      rubric: >
+        Score 100 if the result names specific downstream assets (tables,
+        reports, or dashboards) so a pipeline owner can judge the blast
+        radius of a change. Score lower if it only reports a count with no
+        named assets.

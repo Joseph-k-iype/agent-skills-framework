@@ -49,7 +49,10 @@ code fence) of the form:
 
 def build_content_critic_agent(model, skill_path: str | Path, exclude_name: str | None = None,
                                 memory_context: str = ""):
-    tools = [make_read_skill_md_tool(skill_path), make_read_reference_examples_tool(exclude_name=exclude_name)]
+    tools = [
+        make_read_skill_md_tool(skill_path),
+        make_read_reference_examples_tool(exclude_name=exclude_name),
+    ]
     prompt = CONTENT_CRITIC_SYSTEM_PROMPT
     if memory_context:
         prompt = f"{prompt}\n\n{memory_context}"
@@ -63,7 +66,8 @@ def build_test_executor_agent(model, skill_path: str | Path):
 
 def _last_ai_text(agent_result: dict[str, Any]) -> str:
     for msg in reversed(agent_result.get("messages", [])):
-        if getattr(msg, "type", None) == "ai" and isinstance(msg.content, str) and msg.content.strip():
+        is_ai = getattr(msg, "type", None) == "ai"
+        if is_ai and isinstance(msg.content, str) and msg.content.strip():
             return msg.content
     return ""
 
@@ -88,7 +92,9 @@ def _parse_json_list(text: str, key: str) -> list[dict[str, Any]]:
 
 def run_content_critic(model, skill_path: str | Path, exclude_name: str | None = None,
                         memory_context: str = "") -> list[dict[str, Any]]:
-    agent = build_content_critic_agent(model, skill_path, exclude_name=exclude_name, memory_context=memory_context)
+    agent = build_content_critic_agent(
+        model, skill_path, exclude_name=exclude_name, memory_context=memory_context
+    )
     result = agent.invoke({
         "messages": [(
             "user",
@@ -98,7 +104,9 @@ def run_content_critic(model, skill_path: str | Path, exclude_name: str | None =
     return _parse_json_list(_last_ai_text(result), "findings")
 
 
-def run_test_executor(model, skill_path: str | Path, llm_judged_cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def run_test_executor(
+    model, skill_path: str | Path, llm_judged_cases: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     if not llm_judged_cases:
         return []
     agent = build_test_executor_agent(model, skill_path)

@@ -16,6 +16,7 @@ export interface SkillCommand {
   name: string
   args: string[]
   kwargs: Record<string, string>
+  payload: Record<string, unknown>
 }
 
 export interface SkillResult {

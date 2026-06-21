@@ -1,0 +1,59 @@
+version: 1
+cases:
+  - id: enrich-applies-glossary-terms-to-each-asset
+    description: "/enrich resolves classifications and glossary terms for every asset in the payload"
+    input:
+      type: command
+      name: /enrich
+      payload: {assets: [{id: a1, name: customers}, {id: a2, name: orders}]}
+    expect: {mode: exact_match, value: {status: success}}
+
+  - id: enrich-counts-match-input-asset-count
+    description: "The number of enriched results equals the number of assets passed in"
+    input:
+      type: command
+      name: /enrich
+      payload: {assets: [{id: a1, name: customers}]}
+    expect: {mode: contains, value: {message: "1 assets"}}
+
+  - id: classify-returns-one-result-per-asset
+    description: "/classify resolves classifications for each asset without doing glossary linking"
+    input: {type: command, name: /classify, payload: {assets: [{id: a1}, {id: a2}]}}
+    expect: {mode: contains, value: {message: "Classified 2 assets"}}
+
+  - id: glossary-updated-event-adopts-new-endpoint
+    description: "glossary.updated swaps in the new glossary endpoint for future enrichments"
+    input: {type: event, name: glossary.updated, payload: {glossary_endpoint: "http://glossary.new/api"}}
+    expect: {mode: exact_match, value: {status: success, glossary_endpoint: "http://glossary.new/api"}}
+
+  - id: link-glossary-reports-endpoint
+    description: "/link-glossary echoes back the configured glossary endpoint"
+    input: {type: command, name: /link-glossary, args: []}
+    expect: {mode: exact_match, value: {status: success}}
+
+  - id: unknown-command-is-an-error
+    description: "An unrecognized command surfaces status=error rather than crashing"
+    input: {type: command, name: /nope, args: []}
+    expect: {mode: exact_match, value: {status: error}}
+
+  - id: asset-discovered-event-enriches-and-links-terms
+    description: "asset.discovered triggers classification and glossary linking for the new asset"
+    input:
+      type: event
+      name: asset.discovered
+      payload: {asset: {id: a1, name: customers}}
+    expect: {mode: contains, value: {message: customers}}
+
+  - id: enrichment-summary-explains-the-classification-confidence
+    description: "The enrichment result should help a steward understand why an asset was classified the way it was"
+    input:
+      type: command
+      name: /enrich
+      payload: {assets: [{id: a1, name: customers, email: "a@b.com"}]}
+    expect:
+      mode: llm_judged
+      rubric: >
+        Score 100 if the response gives enough detail (classifications and/or
+        confidence) for a data steward to understand why this asset was
+        enriched the way it was. Score lower if it's just a bare success
+        message with no classification detail.

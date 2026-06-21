@@ -34,6 +34,13 @@ async def test_run_command_end_to_end(harness):
 
 
 @pytest.mark.asyncio
+async def test_run_command_passes_payload_through(harness):
+    await harness.initialize({"sources": [], "catalog_endpoint": ""})
+    result = await harness.run_command("/profile", [], {"unused": "value"})
+    assert result.status == "success"
+
+
+@pytest.mark.asyncio
 async def test_health(harness):
     await harness.initialize({"sources": [], "catalog_endpoint": ""})
     health = await harness.health()

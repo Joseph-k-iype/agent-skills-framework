@@ -92,18 +92,20 @@ class TestEvaluateCommand:
         (tmp_path / "tests").mkdir()
         return tmp_path
 
-    def test_evaluate_exits_zero_with_no_judge_configured(self, valid_skill):
+    def test_evaluate_exits_zero_with_no_judge_configured(self, valid_skill, tmp_path):
         class Args:
             path = str(valid_skill)
             judge = None
             format = "markdown"
+            registry = str(tmp_path / "registry")
         cmd_evaluate(Args())
 
-    def test_evaluate_judge_none_skips_explicitly(self, valid_skill, capsys):
+    def test_evaluate_judge_none_skips_explicitly(self, valid_skill, tmp_path, capsys):
         class Args:
             path = str(valid_skill)
             judge = "none"
             format = "json"
+            registry = str(tmp_path / "registry")
         cmd_evaluate(Args())
         out = json.loads(capsys.readouterr().out)
         assert out["judge_status"] == "skipped"
@@ -115,6 +117,7 @@ class TestEvaluateCommand:
             path = str(tmp_path)
             judge = None
             format = "markdown"
+            registry = str(tmp_path / "registry")
         with pytest.raises(SystemExit):
             cmd_evaluate(Args())
 
@@ -123,6 +126,7 @@ class TestEvaluateCommand:
             path = str(tmp_path)
             judge = None
             format = "markdown"
+            registry = str(tmp_path / "registry")
         with pytest.raises(SystemExit):
             cmd_evaluate(Args())
 

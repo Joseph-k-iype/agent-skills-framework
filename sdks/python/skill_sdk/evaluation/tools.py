@@ -74,7 +74,9 @@ def make_run_test_case_tool(skill_path: str | Path):
 
 def make_score_rubric_tool():
     @tool
-    def score_rubric(case_id: str, rubric: str, raw_output: str, score: float, rationale: str) -> dict[str, Any]:
+    def score_rubric(
+        case_id: str, rubric: str, raw_output: str, score: float, rationale: str
+    ) -> dict[str, Any]:
         """Record a 0-100 score and rationale for how well raw_output satisfies
         rubric, for the given case_id. Call this once per llm_judged case before
         giving your final answer."""

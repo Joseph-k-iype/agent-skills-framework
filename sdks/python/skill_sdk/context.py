@@ -14,6 +14,7 @@ class SkillCommand:
     name: str
     args: list[str] = field(default_factory=list)
     kwargs: dict[str, str] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

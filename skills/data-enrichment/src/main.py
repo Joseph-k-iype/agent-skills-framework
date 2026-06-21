@@ -47,6 +47,13 @@ class Skill(BaseSkill):
                 data={"asset": asset.get("name", ""), "classification": classification, "glossary_terms": terms},
                 message=f"Enriched {asset.get('name', 'unknown')} with {len(terms)} glossary terms",
             )
+        elif event.name == "glossary.updated":
+            self.glossary_endpoint = event.payload.get("glossary_endpoint", self.glossary_endpoint)
+            return SkillResult(
+                status="success",
+                data={"glossary_endpoint": self.glossary_endpoint},
+                message="Glossary updated; future enrichments will use the new terms",
+            )
         return SkillResult(status="success", message=f"Handled event: {event.name}")
 
     async def handle_command(self, command: SkillCommand) -> SkillResult:
@@ -61,6 +68,14 @@ class Skill(BaseSkill):
                 status="success",
                 data={"enriched": results},
                 message=f"Enriched {len(results)} assets",
+            )
+        elif command.name == "/classify":
+            assets = command.payload.get("assets", [])
+            results = [await self._classify_asset(a) for a in assets]
+            return SkillResult(
+                status="success",
+                data={"classified": results},
+                message=f"Classified {len(results)} assets",
             )
         elif command.name == "/link-glossary":
             return SkillResult(

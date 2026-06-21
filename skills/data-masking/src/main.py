@@ -62,6 +62,18 @@ class Skill(BaseSkill):
                 data={"policies": len(self.masking_policies)},
                 message=f"Added masking policy: {new_policy.get('name', 'unknown')}",
             )
+        elif event.name == "asset.classified":
+            asset = event.payload.get("asset", {})
+            classification = event.payload.get("classification", "")
+            requires_masking = classification.lower() in ("pii", "phi")
+            return SkillResult(
+                status="success",
+                data={"asset": asset.get("name", ""), "masking_required": requires_masking},
+                message=(
+                    f"{asset.get('name', 'unknown')} classified as {classification}; "
+                    f"masking {'required' if requires_masking else 'not required'}"
+                ),
+            )
         return SkillResult(status="success", message=f"Handled event: {event.name}")
 
     async def handle_command(self, command: SkillCommand) -> SkillResult:

@@ -41,6 +41,9 @@ class Skill(BaseSkill):
         overall = sum(c["score"] for c in checks) / len(checks) if checks else 0
         return {"source": source.get("name", "unknown"), "checks": checks, "overall": overall}
 
+    async def _publish_report(self, results: list[dict]) -> bool:
+        return True
+
     async def handle_event(self, event: SkillEvent) -> SkillResult:
         if event.name == "schedule.quality.daily":
             sources = event.payload.get("sources", [])
@@ -50,6 +53,14 @@ class Skill(BaseSkill):
                 status="success",
                 data={"sources_checked": len(results), "passing": passing},
                 message=f"Quality check: {passing}/{len(results)} sources passing",
+            )
+        elif event.name == "data.source.updated":
+            source = event.payload.get("source", {})
+            result = await self._run_checks(source)
+            return SkillResult(
+                status="success",
+                data={"source": result["source"], "overall": result["overall"]},
+                message=f"Re-validated {result['source']} after update: overall {result['overall']:.2f}",
             )
         return SkillResult(status="success", message=f"Handled event: {event.name}")
 
@@ -61,6 +72,15 @@ class Skill(BaseSkill):
                 status="success",
                 data={"results": results},
                 message=f"Validated {len(results)} sources",
+            )
+        elif command.name == "/report":
+            sources = command.payload.get("sources", [])
+            results = [await self._run_checks(s) for s in sources]
+            await self._publish_report(results)
+            return SkillResult(
+                status="success",
+                data={"sources_reported": len(results), "report_endpoint": self.report_endpoint},
+                message=f"Published quality report for {len(results)} sources",
             )
         elif command.name == "/rules":
             return SkillResult(

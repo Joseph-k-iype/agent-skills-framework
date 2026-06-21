@@ -2,11 +2,10 @@ import json
 import tempfile
 from pathlib import Path
 
+from _fake_chat_model import FakeToolCallingChatModel
 from langchain_core.messages import AIMessage
 
 from skill_sdk.evaluation.agents import run_content_critic, run_test_executor
-
-from _fake_chat_model import FakeToolCallingChatModel
 
 MANIFEST = {
     "name": "demo-skill",
@@ -65,7 +64,10 @@ def test_run_test_executor_parses_judgments_for_pending_cases():
     model = FakeToolCallingChatModel(responses=[
         AIMessage(content="", tool_calls=[{
             "name": "score_rubric",
-            "args": {"case_id": "c1", "rubric": "r", "raw_output": "o", "score": 90, "rationale": "good"},
+            "args": {
+                "case_id": "c1", "rubric": "r", "raw_output": "o",
+                "score": 90, "rationale": "good",
+            },
             "id": "1",
         }]),
         AIMessage(content=json.dumps({

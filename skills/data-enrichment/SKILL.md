@@ -2,10 +2,12 @@
 name: data-enrichment
 version: 0.1.0
 description: >
-  Augments data assets with business lineage, glossary terms,
-  and classifications. Enriches assets by resolving foreign
-  keys, inferring semantic types, and linking to business
-  metadata repositories.
+  Augments cataloged data assets with classifications, confidence scores,
+  and business glossary terms by matching them against configured
+  enrichment rules. Use this skill right after data-discovery finds a new
+  asset (on the `asset.discovered` event), after the business glossary
+  changes, or whenever a user or skill needs an asset's business meaning
+  (classification, glossary terms) rather than just its raw schema.
 runtime: python
 api_version: 1
 entry: src/main.py
@@ -43,16 +45,38 @@ permissions:
 
 # Data Enrichment
 
-Agent for augmenting data assets with business lineage, glossary terms, and classifications.
+Use this skill to turn a raw cataloged asset (from `data-discovery`) into
+something with business meaning — a classification, a confidence score, and
+business glossary terms — so downstream consumers don't have to guess what a
+table or column actually represents.
 
-## Overview
+## When to invoke
 
-The Data Enrichment skill enriches assets by resolving foreign keys, inferring semantic types, and linking to business metadata repositories. Depends on data-discovery and data-lineage.
+- A `data.discovery` run just published a new asset (`asset.discovered`
+  event) — enrich it before anyone queries it.
+- The business glossary changed (`glossary.updated`) — re-link terms.
+- A user or another skill needs an asset's business classification/glossary
+  terms, not just its column names and types.
 
-## Triggers
+## What it does, step by step
 
-Responds to `asset.discovered` and `glossary.updated` events. Supports `/enrich`, `/classify`, and `/link-glossary` commands.
+1. **`/enrich`** — given a list of `assets` (each `{id, name, ...}`), match
+   each one against every configured `enrichment_rules` entry; an asset gets
+   a classification (with a confidence score) for every rule whose pattern
+   matches, then is linked to relevant glossary terms. Returns one result
+   per input asset.
+2. **`/link-glossary`** — reports the configured `glossary_endpoint` used
+   for term resolution.
+3. **`asset.discovered` event** — runs the same classify-and-link flow for
+   the single asset named in `payload.asset`, immediately after discovery.
 
 ## Configuration
 
-Requires `enrichment_rules` and `glossary_endpoint` for linking to business metadata.
+- `enrichment_rules` — list of `{pattern, classification, confidence}` rules
+  matched against each asset.
+- `glossary_endpoint` — URL of the business glossary used for term linking.
+
+## Dependencies
+
+Depends on `data-discovery` (assets to enrich) and `data-lineage` (lineage
+context for inferring relationships between assets).

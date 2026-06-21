@@ -2,12 +2,11 @@ import json
 import tempfile
 from pathlib import Path
 
+from _fake_chat_model import FakeToolCallingChatModel
 from langchain_core.messages import AIMessage
 
 import skill_sdk.evaluation.graph as graph_mod
 from skill_sdk.evaluation import evaluate_skill
-
-from _fake_chat_model import FakeToolCallingChatModel
 
 MANIFEST = {
     "name": "demo-skill",
@@ -84,11 +83,16 @@ def test_graph_runs_full_agentic_pass_with_fake_model(monkeypatch):
         AIMessage(content=json.dumps({"findings": []})),
         AIMessage(content="", tool_calls=[{
             "name": "score_rubric",
-            "args": {"case_id": "judged-case", "rubric": "always pass", "raw_output": "echo: noop", "score": 95, "rationale": "matches"},
+            "args": {
+                "case_id": "judged-case", "rubric": "always pass",
+                "raw_output": "echo: noop", "score": 95, "rationale": "matches",
+            },
             "id": "c2",
         }]),
         AIMessage(content=json.dumps({
-            "judgments": [{"case_id": "judged-case", "score": 95, "passed": True, "rationale": "matches"}]
+            "judgments": [
+                {"case_id": "judged-case", "score": 95, "passed": True, "rationale": "matches"}
+            ]
         })),
     ])
     monkeypatch.setattr(graph_mod, "_build_model", lambda: fake_model)

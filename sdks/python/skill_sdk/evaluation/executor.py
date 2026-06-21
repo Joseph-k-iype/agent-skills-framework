@@ -32,7 +32,9 @@ def _get_harness_cls():
     return SkillTestHarness
 
 
-def _flatten_result(status: str, data: dict[str, Any], error: str | None, message: str) -> dict[str, Any]:
+def _flatten_result(
+    status: str, data: dict[str, Any], error: str | None, message: str
+) -> dict[str, Any]:
     flat: dict[str, Any] = {"status": status, "error": error, "message": message}
     flat.update(data or {})
     return flat
@@ -91,7 +93,9 @@ def execute_case(skill_path: str | Path, case: dict[str, Any]) -> dict[str, Any]
         async def _run():
             await harness.initialize()
             if input_.get("type") == "command":
-                return await harness.run_command(input_.get("name"), input_.get("args"))
+                return await harness.run_command(
+                    input_.get("name"), input_.get("args"), input_.get("payload")
+                )
             return await harness.run_event(input_.get("name"), input_.get("payload"))
 
         result = asyncio.run(_run())
@@ -105,11 +109,11 @@ def execute_case(skill_path: str | Path, case: dict[str, Any]) -> dict[str, Any]
         }
 
     if mode == "exact_match":
-        passed = _exact_match(actual, expect.get("value"))
-        return {"case_id": case_id, "mode": mode, "status": "passed" if passed else "failed", "actual": actual}
+        status = "passed" if _exact_match(actual, expect.get("value")) else "failed"
+        return {"case_id": case_id, "mode": mode, "status": status, "actual": actual}
     if mode == "contains":
-        passed = _contains(actual, expect.get("value"))
-        return {"case_id": case_id, "mode": mode, "status": "passed" if passed else "failed", "actual": actual}
+        status = "passed" if _contains(actual, expect.get("value")) else "failed"
+        return {"case_id": case_id, "mode": mode, "status": status, "actual": actual}
     if mode == "llm_judged":
         return {
             "case_id": case_id,
@@ -118,4 +122,9 @@ def execute_case(skill_path: str | Path, case: dict[str, Any]) -> dict[str, Any]
             "actual": actual,
             "rubric": expect.get("rubric"),
         }
-    return {"case_id": case_id, "mode": mode, "status": "error", "detail": f"unknown expect.mode '{mode}'"}
+    return {
+        "case_id": case_id,
+        "mode": mode,
+        "status": "error",
+        "detail": f"unknown expect.mode '{mode}'",
+    }

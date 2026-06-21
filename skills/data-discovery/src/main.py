@@ -50,6 +50,12 @@ class Skill(BaseSkill):
     async def _publish_to_catalog(self, results: list[dict]) -> bool:
         return True
 
+    async def _discover_all(self) -> tuple[int, int]:
+        results = [await self._crawl_source(source) for source in self.sources]
+        await self._publish_to_catalog(results)
+        total_assets = sum(len(r["assets"]) for r in results)
+        return len(results), total_assets
+
     async def handle_event(self, event: SkillEvent) -> SkillResult:
         if event.name == "data.source.connected":
             source = event.payload.get("source", {})
@@ -60,20 +66,22 @@ class Skill(BaseSkill):
                 data={"discovered": result},
                 message=f"Discovered assets from {source.get('name', 'unknown')}",
             )
+        elif event.name == "schedule.crawl.daily":
+            sources_crawled, assets_discovered = await self._discover_all()
+            return SkillResult(
+                status="success",
+                data={"sources_crawled": sources_crawled, "assets_discovered": assets_discovered},
+                message=f"Daily crawl discovered {assets_discovered} assets across {sources_crawled} sources",
+            )
         return SkillResult(status="success", message=f"Handled event: {event.name}")
 
     async def handle_command(self, command: SkillCommand) -> SkillResult:
         if command.name == "/discover":
-            results = []
-            for source in self.sources:
-                result = await self._crawl_source(source)
-                results.append(result)
-            await self._publish_to_catalog(results)
-            total_assets = sum(len(r["assets"]) for r in results)
+            sources_crawled, assets_discovered = await self._discover_all()
             return SkillResult(
                 status="success",
-                data={"sources_crawled": len(results), "assets_discovered": total_assets},
-                message=f"Discovered {total_assets} assets across {len(results)} sources",
+                data={"sources_crawled": sources_crawled, "assets_discovered": assets_discovered},
+                message=f"Discovered {assets_discovered} assets across {sources_crawled} sources",
             )
         elif command.name == "/profile":
             return SkillResult(

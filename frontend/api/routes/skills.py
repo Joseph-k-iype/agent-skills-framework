@@ -21,6 +21,7 @@ from skill_sdk.adapter import generate_skill_doc
 from .. import audit
 from ..deps import get_registry, get_registry_path
 from ..security import resolve_in_workspace, require_api_key
+from .evaluation import read_eval_report
 
 router = APIRouter()
 
@@ -103,15 +104,22 @@ def skills_compliance(registry: RegistryClient = Depends(get_registry)):
                     capabilities = len(m.get("capabilities", []) or [])
                 except ValidationError:
                     pass
+        last_evaluation_score = None
+        latest_version = info.get("latest", "")
+        if latest_version:
+            eval_report = read_eval_report(get_registry_path(), name, latest_version)
+            if eval_report:
+                last_evaluation_score = eval_report.get("overall_score")
         out.append({
             "name": name,
-            "latest": info.get("latest", ""),
+            "latest": latest_version,
             "runtime": runtime,
             "valid": valid,
             "permissions": permissions,
             "permission_details": permission_details,
             "capabilities": capabilities,
             "errors": errors,
+            "last_evaluation_score": last_evaluation_score,
         })
     return {"skills": out}
 

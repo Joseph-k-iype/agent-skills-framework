@@ -43,8 +43,10 @@ class SkillTestHarness:
     def make_event(self, name: str, payload: dict | None = None) -> SkillEvent:
         return SkillEvent(name=name, payload=payload or {})
 
-    def make_command(self, name: str, args: list[str] | None = None) -> SkillCommand:
-        return SkillCommand(name=name, args=args or [])
+    def make_command(
+        self, name: str, args: list[str] | None = None, payload: dict | None = None
+    ) -> SkillCommand:
+        return SkillCommand(name=name, args=args or [], payload=payload or {})
 
     # -- loading / running -------------------------------------------------
 
@@ -88,8 +90,10 @@ class SkillTestHarness:
         await self.skill.initialize(ctx)
         return ctx
 
-    async def run_command(self, name: str, args: list[str] | None = None) -> SkillResult:
-        return await self.skill.handle_command(self.make_command(name, args))
+    async def run_command(
+        self, name: str, args: list[str] | None = None, payload: dict | None = None
+    ) -> SkillResult:
+        return await self.skill.handle_command(self.make_command(name, args, payload))
 
     async def run_event(self, name: str, payload: dict | None = None) -> SkillResult:
         return await self.skill.handle_event(self.make_event(name, payload))

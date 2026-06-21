@@ -1,0 +1,37 @@
+version: 1
+cases:
+  - id: discover-no-sources-configured
+    description: "/discover with no sources configured still returns a structured success result"
+    input: {type: command, name: /discover, args: []}
+    expect: {mode: exact_match, value: {status: success, sources_crawled: 0, assets_discovered: 0}}
+
+  - id: profile-no-sources-configured
+    description: "/profile with no sources configured returns success and zero profiled"
+    input: {type: command, name: /profile, args: []}
+    expect: {mode: exact_match, value: {status: success, sources_profiled: 0}}
+
+  - id: unknown-command-is-an-error
+    description: "An unrecognized command name surfaces status=error rather than crashing"
+    input: {type: command, name: /nope, args: []}
+    expect: {mode: exact_match, value: {status: error}}
+
+  - id: daily-crawl-schedule-event-discovers-all-sources
+    description: "schedule.crawl.daily crawls every configured source, just like /discover"
+    input: {type: event, name: schedule.crawl.daily, payload: {}}
+    expect: {mode: exact_match, value: {status: success, sources_crawled: 0, assets_discovered: 0}}
+
+  - id: source-connected-event-discovers-and-reports-by-name
+    description: "data.source.connected crawls the announced source and names it in the result message"
+    input: {type: event, name: data.source.connected, payload: {source: {name: orders_db, type: postgresql}}}
+    expect: {mode: contains, value: {message: orders_db}}
+
+  - id: discover-summary-is-informative
+    description: "The /discover summary should read like a useful status update, not a generic success message"
+    input: {type: command, name: /discover, args: []}
+    expect:
+      mode: llm_judged
+      rubric: >
+        Score 100 if the result's message clearly states how many assets were
+        discovered and from how many sources, in a sentence a data engineer
+        skimming logs would understand at a glance. Score lower if the
+        message is vague or omits the counts.

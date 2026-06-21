@@ -10,9 +10,12 @@ class EvaluationState(TypedDict, total=False):
     skill_path: str
     skill_name: str
     skill_version: str
+    registry_path: str
     manifest: dict[str, Any]
     eval_cases: list[dict[str, Any]]
     memory_context: str
+    model: Any  # live BaseChatModel instance — graph-invocation-only, never serialized/reported
+    pending_judgment: list[dict[str, Any]]
     structural_errors: list[str]
     structural_warnings: list[str]
     content_critic_findings: list[dict[str, Any]]

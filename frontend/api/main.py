@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "sdks" / "python"))
 
-from .routes import skills, registry, dashboard, graph, audit, deployments
+from .routes import skills, registry, dashboard, graph, audit, deployments, evaluation
 
 app = FastAPI(
     title="Agent Skills API",
@@ -26,6 +26,7 @@ app.add_middleware(
 
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
+app.include_router(evaluation.router, prefix="/api/skills", tags=["evaluation"])
 app.include_router(registry.router, prefix="/api/registry", tags=["registry"])
 app.include_router(graph.router, prefix="/api/graph", tags=["graph"])
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
