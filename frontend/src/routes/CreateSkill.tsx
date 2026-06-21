@@ -88,6 +88,11 @@ export default function CreateSkill() {
   const [skillDep, setSkillDep] = useState('')
   const [eventTrigger, setEventTrigger] = useState('')
   const [commandTrigger, setCommandTrigger] = useState('')
+  const [docBody, setDocBody] = useState('')
+  const [docTouched, setDocTouched] = useState(false)
+
+  // Until the author edits the docs, keep them synced to the (changing) skill name.
+  const effectiveBody = docTouched ? docBody : defaultBody(manifest.name)
 
   const queryClient = useQueryClient()
   const { can } = useAuth()
@@ -121,7 +126,7 @@ export default function CreateSkill() {
     if (manifest.triggers?.commands?.length) triggers.commands = manifest.triggers.commands
     if (Object.keys(triggers).length) m.triggers = triggers
     if (manifest.config?.required?.length) m.config = { required: manifest.config.required }
-    m.body = `# ${manifest.name}\n\nAgent instructions for the **${manifest.name}** skill.\n\n## Usage\n\nDescribe how agents interact with this skill.\n\n## Examples\n\nProvide example interactions here.\n`
+    m.body = effectiveBody
     return m as import('../lib/types').ScaffoldRequest['manifest']
   }
 
@@ -204,8 +209,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
 `
 
   const handleDownload = () => {
-    const body = `# ${manifest.name}\n\nAgent instructions for the **${manifest.name}** skill.\n\n## Usage\n\nDescribe how agents interact with this skill.\n\n## Examples\n\nProvide example interactions here.\n`
-    const text = `---\n${yamlContent.trim()}\n---\n\n${body}`
+    const text = `---\n${yamlContent.trim()}\n---\n\n${effectiveBody.trim()}\n`
     const blob = new Blob([text], { type: 'text/markdown' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -456,6 +460,26 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
         )}
 
         {step === 3 && (
+          <div className="card space-y-4">
+            <div>
+              <h3 className="eyebrow">Documentation</h3>
+              <p className="mt-1 text-sm text-ink-2">
+                Agent-facing instructions (the body of SKILL.md). Markdown and{' '}
+                <code className="rounded bg-canvas px-1 py-0.5 text-xs">mermaid</code> diagrams are
+                supported — use the Preview tab to check rendering.
+              </p>
+            </div>
+            <MarkdownEditor
+              value={effectiveBody}
+              onChange={(v) => {
+                setDocBody(v)
+                setDocTouched(true)
+              }}
+            />
+          </div>
+        )}
+
+        {step === 4 && (
           <div className="card space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="eyebrow flex items-center gap-2">
