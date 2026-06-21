@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -104,12 +103,8 @@ async def run_evaluation(
     skill_dir = _skill_dir_or_404(name, registry)
     registry_path = get_registry_path()
 
-    judge = req.judge
-    if judge and judge != "none":
-        os.environ["SKILLS_EVAL_MODEL"] = judge
-
     report = await run_in_threadpool(
-        evaluate_skill, skill_dir, judge=judge, registry_path=registry_path
+        evaluate_skill, skill_dir, judge=req.judge, registry_path=registry_path
     )
     report_dict = report.to_dict()
     _write_eval_report(registry_path, report.skill_name, report.skill_version, report_dict)

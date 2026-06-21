@@ -364,12 +364,8 @@ def cmd_evaluate(args):
         print(f"Error: no SKILL.md, skill.yaml, skill.yml, or skill.json found in {target}")
         sys.exit(1)
 
-    judge = args.judge
-    if judge and judge != "none":
-        os.environ["SKILLS_EVAL_MODEL"] = judge
-
     registry_path = Path(args.registry) if args.registry else Path.cwd() / "registry"
-    report = evaluate_skill(target, judge=judge, registry_path=registry_path)
+    report = evaluate_skill(target, judge=args.judge, registry_path=registry_path)
 
     if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2))

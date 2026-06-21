@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -66,7 +67,7 @@ def _make_skill(tmp: Path) -> Path:
 
 
 def test_graph_skips_judging_when_no_model_available(monkeypatch):
-    monkeypatch.setattr(graph_mod, "_build_model", lambda: None)
+    monkeypatch.setattr(graph_mod, "_build_model", lambda judge=None: None)
     tmp = _make_skill(Path(tempfile.mkdtemp()))
     report = evaluate_skill(tmp, registry_path=tmp / "registry")
 
@@ -95,7 +96,7 @@ def test_graph_runs_full_agentic_pass_with_fake_model(monkeypatch):
             ]
         })),
     ])
-    monkeypatch.setattr(graph_mod, "_build_model", lambda: fake_model)
+    monkeypatch.setattr(graph_mod, "_build_model", lambda judge=None: fake_model)
 
     tmp = _make_skill(Path(tempfile.mkdtemp()))
     report = evaluate_skill(tmp, registry_path=tmp / "registry")
@@ -107,12 +108,51 @@ def test_graph_runs_full_agentic_pass_with_fake_model(monkeypatch):
     assert report.overall_score == 100.0
 
 
+def test_build_model_prefers_explicit_judge_over_env_without_mutating_it(monkeypatch):
+    # A request-scoped --judge/judge= override must never leak into the
+    # process-wide env var — a long-lived server process would otherwise have
+    # one caller's override silently stick for every later evaluation.
+    monkeypatch.setenv("SKILLS_EVAL_MODEL", "google_genai:gemini-3.5-flash")
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+
+    captured = {}
+
+    def fake_init_chat_model(spec):
+        captured["spec"] = spec
+        return object()
+
+    monkeypatch.setattr("langchain.chat_models.init_chat_model", fake_init_chat_model)
+
+    model = graph_mod._build_model(judge="anthropic:claude-haiku-4-5")
+
+    assert model is not None
+    assert captured["spec"] == "anthropic:claude-haiku-4-5"
+    assert os.environ["SKILLS_EVAL_MODEL"] == "google_genai:gemini-3.5-flash"
+
+
+def test_build_model_falls_back_to_env_when_no_judge_given(monkeypatch):
+    monkeypatch.setenv("SKILLS_EVAL_MODEL", "google_genai:gemini-3.5-flash")
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+
+    captured = {}
+
+    def fake_init_chat_model(spec):
+        captured["spec"] = spec
+        return object()
+
+    monkeypatch.setattr("langchain.chat_models.init_chat_model", fake_init_chat_model)
+
+    graph_mod._build_model()
+
+    assert captured["spec"] == "google_genai:gemini-3.5-flash"
+
+
 def test_graph_degrades_to_error_status_when_agent_invocation_raises(monkeypatch):
     class ExplodingModel:
         def bind_tools(self, *a, **k):
             return self
 
-    monkeypatch.setattr(graph_mod, "_build_model", lambda: ExplodingModel())
+    monkeypatch.setattr(graph_mod, "_build_model", lambda judge=None: ExplodingModel())
 
     tmp = _make_skill(Path(tempfile.mkdtemp()))
     report = evaluate_skill(tmp, registry_path=tmp / "registry")

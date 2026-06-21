@@ -358,6 +358,21 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
 
             <p className="text-sm text-gray-400">{report.summary}</p>
 
+            {report.judge_status !== 'ok' && report.judge_skip_reason && (
+              <div>
+                <p className={`mb-1 text-xs font-medium uppercase tracking-wider ${
+                  report.judge_status === 'error' ? 'text-red-400' : 'text-gray-500'
+                }`}>
+                  {report.judge_status === 'error' ? 'Judge Error' : 'Judge Skipped'}
+                </p>
+                <p className={`whitespace-pre-wrap break-words text-sm ${
+                  report.judge_status === 'error' ? 'text-red-400' : 'text-gray-500'
+                }`}>
+                  {report.judge_skip_reason}
+                </p>
+              </div>
+            )}
+
             {report.structural_errors.length > 0 && (
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wider text-red-400">Structural Errors</p>

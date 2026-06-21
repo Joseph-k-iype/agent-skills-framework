@@ -111,6 +111,7 @@ def evaluate_skill(
         registry_path=registry_path,
         pending_judgment=pending_judgment,
         base_report=report,
+        judge=judge,
     )
 
 

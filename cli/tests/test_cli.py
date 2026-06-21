@@ -92,13 +92,20 @@ class TestEvaluateCommand:
         (tmp_path / "tests").mkdir()
         return tmp_path
 
-    def test_evaluate_exits_zero_with_no_judge_configured(self, valid_skill, tmp_path):
+    def test_evaluate_exits_zero_with_no_judge_configured(self, valid_skill, tmp_path, monkeypatch, capsys):
+        # Without this, an ambient repo-root .env with SKILLS_EVAL_MODEL set would
+        # make this hit a real provider over the network instead of testing the
+        # no-judge-configured degradation path it's named for.
+        monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+        monkeypatch.delenv("SKILLS_EVAL_MODEL", raising=False)
         class Args:
             path = str(valid_skill)
             judge = None
-            format = "markdown"
+            format = "json"
             registry = str(tmp_path / "registry")
         cmd_evaluate(Args())
+        out = json.loads(capsys.readouterr().out)
+        assert out["judge_status"] == "skipped"
 
     def test_evaluate_judge_none_skips_explicitly(self, valid_skill, tmp_path, capsys):
         class Args:
@@ -111,7 +118,11 @@ class TestEvaluateCommand:
         assert out["judge_status"] == "skipped"
         assert "disabled" in out["judge_skip_reason"]
 
-    def test_evaluate_exits_nonzero_on_structural_errors(self, tmp_path):
+    def test_evaluate_exits_nonzero_on_structural_errors(self, tmp_path, monkeypatch):
+        # Structural errors don't skip the agentic pass, so without stubbing this
+        # would also hit a real provider via the ambient repo-root .env.
+        monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+        monkeypatch.delenv("SKILLS_EVAL_MODEL", raising=False)
         (tmp_path / "skill.json").write_text('{"name": "incomplete"}')
         class Args:
             path = str(tmp_path)

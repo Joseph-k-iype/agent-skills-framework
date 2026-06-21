@@ -45,7 +45,12 @@ def test_evaluate_skill_judge_none_forces_skip():
     assert "disabled" in report.judge_skip_reason
 
 
-def test_evaluate_skill_reports_structural_errors():
+def test_evaluate_skill_reports_structural_errors(monkeypatch):
+    # Structural errors don't short-circuit the agentic pass (see evaluate_skill),
+    # so this would otherwise also make a real provider call via the ambient
+    # repo-root .env — irrelevant to what this test checks, and wasteful/flaky.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    monkeypatch.delenv("SKILLS_EVAL_MODEL", raising=False)
     tmp = Path(tempfile.mkdtemp())
     bad_manifest = dict(MANIFEST)
     del bad_manifest["description"]
@@ -54,7 +59,13 @@ def test_evaluate_skill_reports_structural_errors():
     assert any("description" in e.lower() for e in report.structural_errors)
 
 
-def test_evaluate_skill_never_raises_without_eval_extras_installed():
+def test_evaluate_skill_never_raises_without_eval_extras_installed(monkeypatch):
+    # Same ambient-.env hazard as test_evaluate_skill_skipped_when_no_judge_configured:
+    # a developer's real repo-root .env can configure SKILLS_EVAL_MODEL, which would
+    # make this hit a real provider over the network instead of testing the
+    # no-judge-configured degradation path it's named for.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    monkeypatch.delenv("SKILLS_EVAL_MODEL", raising=False)
     tmp = Path(tempfile.mkdtemp())
     _make_skill(tmp)
     # No SKILLS_EVAL_MODEL / langchain installed in the base test env — must

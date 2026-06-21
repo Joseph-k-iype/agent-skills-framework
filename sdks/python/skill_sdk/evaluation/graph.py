@@ -9,8 +9,15 @@ from .state import EvaluationReport
 _SEVERITY_WEIGHT = {"error": 20, "warning": 10, "info": 2}
 
 
-def _build_model() -> Any | None:
+def _build_model(judge: str | None = None) -> Any | None:
     """Construct the configured LangChain chat model, or None if unavailable.
+
+    ``judge`` is an explicit per-call override (e.g. from a CLI ``--judge`` flag
+    or an API request body) and takes precedence over ``SKILLS_EVAL_MODEL`` when
+    given — callers must NOT mutate ``os.environ`` to pass an override, since
+    that leaks into every other concurrent/subsequent call in the process
+    (a long-lived server would have one request's judge override silently
+    stick for every later evaluation of every skill until restart).
 
     Mirrors ``FalkorDBConnector.connect()`` in ``graph.py`` at the top level:
     a missing optional package, an unset env var, an unknown provider, or a
@@ -24,7 +31,7 @@ def _build_model() -> Any | None:
     except ImportError:
         pass
 
-    model_spec = os.environ.get("SKILLS_EVAL_MODEL")
+    model_spec = judge or os.environ.get("SKILLS_EVAL_MODEL")
     if not model_spec:
         return None
 
@@ -138,6 +145,7 @@ def run_agentic_evaluation(
     registry_path: str | Path,
     pending_judgment: list[dict[str, Any]],
     base_report: EvaluationReport,
+    judge: str | None = None,
 ) -> EvaluationReport:
     """Layer the content-critic + test-executor agent passes on top of an
     already-structurally-checked report. Any failure here — missing model,
@@ -146,7 +154,7 @@ def run_agentic_evaluation(
     it never raises out to the caller.
     """
     report = base_report
-    model = _build_model()
+    model = _build_model(judge)
     if model is None:
         report.judge_status = "skipped"
         report.judge_skip_reason = "no SKILLS_EVAL_MODEL configured (or model construction failed)"
@@ -166,7 +174,7 @@ def run_agentic_evaluation(
         })
 
         report.content_critic_findings = result_state.get("content_critic_findings", [])
-        report.content_critic_model = os.environ.get("SKILLS_EVAL_MODEL")
+        report.content_critic_model = judge or os.environ.get("SKILLS_EVAL_MODEL")
         _merge_judgments(report, pending_judgment, result_state.get("test_executor_results", []))
 
         report.judge_status = "ok"
