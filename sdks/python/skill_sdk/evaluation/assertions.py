@@ -51,6 +51,8 @@ def _command_ran(res: RunResult, spec: dict) -> tuple[bool, str]:
 
 def _exit_code(res: RunResult, spec: dict) -> tuple[bool, str]:
     equals = spec.get("equals")
+    if equals is None:
+        return False, "exit_code assertion missing 'equals'"
     cmd_pat = spec.get("command")
     cmds = res.trajectory.commands()
     if cmd_pat:
@@ -58,12 +60,14 @@ def _exit_code(res: RunResult, spec: dict) -> tuple[bool, str]:
     if not cmds:
         return False, f"no command matched '{cmd_pat}'"
     last = cmds[-1]
+    if last.exit_code is None:
+        return False, f"'{last.name}' has no exit code (wanted {equals})"
     ok = last.exit_code == equals
     return ok, f"'{last.name}' exited {last.exit_code} (wanted {equals})"
 
 
 def _no_extra_files(ws: Path, spec: dict, input_files: list[str]) -> tuple[bool, str]:
-    allow = list(spec.get("allow", [])) + [Path(f).name for f in input_files] + list(input_files)
+    allow = list(spec.get("allow", [])) + list(input_files)
     extras = []
     for rel in _workspace_files(ws):
         if any(fnmatch.fnmatch(rel, pat) for pat in allow):

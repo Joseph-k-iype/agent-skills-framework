@@ -74,3 +74,30 @@ def test_llm_assertions_are_skipped_here():
     res = RunResult()
     case = {"expect": {"assertions": [{"kind": "llm", "statement": "looks good"}]}}
     assert evaluate_assertions(case, res) == []
+
+
+def test_no_extra_files_rejects_stray_sharing_only_basename():
+    # data.csv is the legitimate input, at a nested-ish relative path. A stray file at the
+    # workspace root happens to share that basename. The old code allowed *any* file whose
+    # basename matched an input file's basename (`Path(f).name for f in input_files`), so a
+    # stray "data.csv" at the root would have been allowed even though the real input is
+    # "inputs/data.csv" -- a false pass. input_files entries are exact workspace-relative
+    # names, so basename-matching is both redundant and wrong.
+    ws = _ws_with({"inputs/data.csv": "given", "data.csv": "unrelated stray"})
+    res = RunResult(workspace_path=ws)
+    case = {"expect": {"assertions": [
+        {"kind": "no_extra_files", "allow": []},
+    ]}}
+    out = evaluate_assertions(case, res, input_files=["inputs/data.csv"])
+    assert out[0]["passed"] is False
+    assert "data.csv" in out[0]["evidence"]
+
+
+def test_exit_code_without_equals_fails():
+    traj = Trajectory()
+    traj.add(TrajectoryEvent(kind="command", name="npm run build", exit_code=None))
+    res = RunResult(trajectory=traj)
+    case = {
+        "expect": {"assertions": [{"kind": "exit_code", "command": "npm run build"}]}
+    }
+    assert evaluate_assertions(case, res)[0]["passed"] is False
