@@ -10,7 +10,13 @@ from pathlib import Path
 from .trajectory import Trajectory, TrajectoryEvent
 
 DESTRUCTIVE_PATTERNS = [
-    r"\brm\s+-rf\s+/",
+    # rm with both -r and -f (any flag order, combined or separate) targeting a
+    # dangerous root: /, ~, or $HOME — but NOT ordinary relative paths like ./build.
+    r"\brm\b(?:\s+-[a-zA-Z-]+|\s+--[a-z-]+)*\s+"
+    r"(?=(?:-[a-zA-Z]*r[a-zA-Z]*\b.*-[a-zA-Z]*f[a-zA-Z]*\b|"
+    r"-[a-zA-Z]*f[a-zA-Z]*\b.*-[a-zA-Z]*r[a-zA-Z]*\b|"
+    r"-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\b|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*\b))"
+    r"(?:-[a-zA-Z]+\s+|--[a-z-]+\s+)*(/|~|\$HOME)(\s|$)",
     r":\(\)\s*\{\s*:\|:&\s*\};:",  # fork bomb
     r"\bcurl\b[^|]*\|\s*(sh|bash)\b",  # curl | sh
     r"\bwget\b[^|]*\|\s*(sh|bash)\b",
@@ -64,7 +70,7 @@ def cleanup(ws: Workspace, keep: bool = False) -> None:
 
 def run_command(cmd: str, cwd: Path, timeout_s: int = 60) -> tuple[int, str]:
     for pat in DESTRUCTIVE_PATTERNS:
-        if re.search(pat, cmd):
+        if re.search(pat, cmd, re.IGNORECASE):
             raise DestructiveCommandError(f"blocked destructive command: {cmd!r}")
     env = {"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(cwd)}
     try:

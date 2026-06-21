@@ -66,3 +66,48 @@ def test_run_command_runs_in_workspace():
     code, out = run_command("echo hello > note.txt", ws.path)
     assert code == 0
     assert (ws.path / "note.txt").read_text().strip() == "hello"
+
+
+def test_deny_list_is_case_insensitive():
+    ws = make_workspace(PERMS_FS)
+    with pytest.raises(DestructiveCommandError):
+        run_command("RM -RF /", ws.path)
+
+
+def test_deny_list_blocks_home_and_flag_variants():
+    ws = make_workspace(PERMS_FS)
+    for cmd in (
+        "rm -rf ~",
+        "rm -fr /",
+        "rm -rf --no-preserve-root /",
+        "rm -rf $HOME",
+    ):
+        with pytest.raises(DestructiveCommandError):
+            run_command(cmd, ws.path)
+
+
+def test_deny_list_allows_safe_rm():
+    ws = make_workspace(PERMS_FS)
+    # Must not raise; directory need not exist, command may fail at the shell level.
+    run_command("rm -rf ./build", ws.path)
+
+
+PERMS_DELETE = [{"resource": "workspace", "actions": ["delete"]}]
+
+
+def test_delete_tool_present_when_declared():
+    ws = make_workspace(PERMS_DELETE)
+    target = ws.path / "doomed.txt"
+    target.write_text("bye")
+    traj = Trajectory()
+    tools = {t.name: t for t in build_tools(ws, traj)}
+    assert "delete_file" in tools
+    tools["delete_file"].invoke({"path": "doomed.txt"})
+    assert not target.exists()
+    assert any(e.name == "delete_file" for e in traj.events)
+
+
+def test_delete_tool_absent_when_not_declared():
+    ws = make_workspace(PERMS_FS)  # no "delete"
+    tools = {t.name: t for t in build_tools(ws, Trajectory())}
+    assert "delete_file" not in tools
