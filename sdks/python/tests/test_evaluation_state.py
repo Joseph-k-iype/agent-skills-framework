@@ -1,4 +1,9 @@
-from skill_sdk.evaluation.state import EvaluationReport, ExecutorSummary
+from skill_sdk.evaluation.state import (
+    AgentExecutionSummary,
+    ConfigAggregate,
+    EvaluationReport,
+    ExecutorSummary,
+)
 
 
 def test_report_to_dict_shape():
@@ -38,3 +43,26 @@ def test_overall_score_defaults_to_none_not_zero():
     )
     assert report.overall_score is None
     assert report.to_dict()["overall_score"] is None
+
+
+def _report():
+    return EvaluationReport(skill_name="s", skill_version="1.0.0", run_at="t",
+                            judge_status="ok", judge_skip_reason=None)
+
+
+def test_report_to_dict_has_agent_execution_none_by_default():
+    assert _report().to_dict()["agent_execution"] is None
+
+
+def test_agent_execution_summary_serializes():
+    summ = AgentExecutionSummary(
+        comparison_mode="with_without", skip_reason=None, runs_per_case=1,
+        with_skill=ConfigAggregate(pass_rate_mean=1.0),
+        baseline=ConfigAggregate(pass_rate_mean=0.0),
+        delta={"pass_rate": 1.0, "tokens": 50.0, "duration": 10.0}, cases=[])
+    r = _report()
+    r.agent_execution = summ
+    d = r.to_dict()["agent_execution"]
+    assert d["comparison_mode"] == "with_without"
+    assert d["with_skill"]["pass_rate_mean"] == 1.0
+    assert d["delta"]["pass_rate"] == 1.0
