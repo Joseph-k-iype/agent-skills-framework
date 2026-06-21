@@ -86,3 +86,63 @@ def test_load_raises_on_malformed_existing_file():
     path.write_text("version: 1\ncases:\n  - id: x\n")
     with pytest.raises(ValueError):
         load_eval_cases(tmp)
+
+
+def _task_case(**over):
+    case = {
+        "id": "t1",
+        "input": {"type": "task", "prompt": "do the thing"},
+        "expect": {"mode": "assertions", "assertions": [{"kind": "file_exists", "path": "out.txt"}]},
+    }
+    case.update(over)
+    return case
+
+
+def test_valid_task_case_has_no_errors():
+    assert validate_eval_cases([_task_case()]) == []
+
+
+def test_task_case_requires_prompt():
+    case = _task_case(input={"type": "task"})
+    errs = validate_eval_cases([case])
+    assert any("prompt" in e for e in errs)
+
+
+def test_assertions_mode_requires_nonempty_list():
+    case = _task_case(expect={"mode": "assertions", "assertions": []})
+    errs = validate_eval_cases([case])
+    assert any("assertions" in e for e in errs)
+
+
+def test_unknown_assertion_kind_is_error():
+    case = _task_case(expect={"mode": "assertions", "assertions": [{"kind": "bogus"}]})
+    errs = validate_eval_cases([case])
+    assert any("bogus" in e for e in errs)
+
+
+def test_file_contains_requires_text_or_pattern():
+    case = _task_case(expect={"mode": "assertions",
+                              "assertions": [{"kind": "file_contains", "path": "a.txt"}]})
+    errs = validate_eval_cases([case])
+    assert any("file_contains" in e for e in errs)
+
+
+def test_command_assertion_without_execute_permission_is_warning_not_error():
+    # validate_eval_cases is permission-agnostic; the execute warning is added
+    # by validate_full_skill integration (Task 8). Here we only confirm the
+    # case itself is structurally valid.
+    case = _task_case(expect={"mode": "assertions",
+                              "assertions": [{"kind": "command_ran", "pattern": "npm install"}]})
+    assert validate_eval_cases([case]) == []
+
+
+def test_runs_must_be_positive_int_and_baseline_enum():
+    bad_runs = _task_case(runs=0)
+    bad_baseline = _task_case(baseline="sometimes")
+    assert any("runs" in e for e in validate_eval_cases([bad_runs]))
+    assert any("baseline" in e for e in validate_eval_cases([bad_baseline]))
+
+
+def test_task_type_does_not_require_input_name():
+    # 'name' is required for command/event but not for task
+    assert validate_eval_cases([_task_case()]) == []
