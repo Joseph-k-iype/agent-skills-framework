@@ -160,6 +160,26 @@ def build_tools(ws: Workspace, trajectory: Trajectory, full_surface: bool = Fals
             )
         )
 
+    if "delete" in allowed:
+
+        def delete_file(path: str) -> str:
+            try:
+                target = _safe_join(ws.path, path)
+                if not target.exists():
+                    return _record(
+                        "delete_file", {"path": path}, f"error: no such file: {path}"
+                    )
+                target.unlink()
+                return _record("delete_file", {"path": path}, f"deleted {path}")
+            except Exception as e:
+                return _record("delete_file", {"path": path}, f"error: {e}")
+
+        tools.append(
+            StructuredTool.from_function(
+                delete_file, name="delete_file", description="Delete a file in the workspace."
+            )
+        )
+
     if "execute" in allowed:
 
         def run_command_tool(command: str) -> str:
