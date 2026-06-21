@@ -46,7 +46,7 @@ export interface SkillManifest {
   id?: string
   name: string
   version: string
-  description?: string
+  description: string
   runtime: 'python' | 'typescript'
   api_version: number
   entry: string

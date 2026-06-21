@@ -10,7 +10,7 @@ The repo is a set of loosely-coupled packages that are **not** pip-installed. Co
 
 - `sdks/python/skill_sdk/` — the authoritative SDK. Everything else imports `skill_sdk`.
 - `cli/src/main.py` — the `skill` CLI. At import time it does `sys.path.insert(0, ".../sdks/python")` (main.py:8) so it can import `skill_sdk` without installation.
-- `skills/` — reference skills (e.g. `data-discovery`); each is a standalone skill dir with its own `skill.yaml` + `src/` + `tests/`.
+- `skills/` — reference skills (e.g. `data-discovery`); each is a standalone skill dir with its own `SKILL.md` + `src/` + `tests/`.
 - `sdks/typescript/` — a thin mirror of the SDK types; **Python is the source of truth**, keep TS in sync when changing the manifest/ID contract.
 - `spec/skill-schema.json` — the published JSON Schema. Note: `validate_manifest` does **not** load it; validation is hand-written validators in `validation.py`. If you change the schema, update both.
 - `registry/` — a filesystem registry: `index.yaml` + published skills copied under `registry/skills/<name>-<version>/`.
@@ -52,7 +52,7 @@ sdks/python[test]`); `asyncio_mode = auto` is set in each package's pytest confi
 Every skill has a SPIFFE-inspired immutable ID: `skill://sha256/<digest>/<name>@<version>`.
 
 - `compute_skill_id` (`hashing.py`) hashes the **canonical manifest JSON with the `id` field stripped** (`sort_keys=True`, compact separators, `ensure_ascii=False`), then appends every source file as `posix_relpath \x00 bytes \x00`, sorted by POSIX path. The file set is defined by `iter_source_files`: **all files of any extension/binary** EXCEPT the manifests, dotfiles/dotdirs, `__pycache__`/`node_modules`/`dist`, and **tests** (`tests/` dirs and `test_*.py`/`*_test.py`/`conftest.py`/`*.test.ts` files). So editing a test does NOT change the ID, but a shipped `.sh`/asset does. POSIX paths + `ensure_ascii=False` make the digest **identical across OSes** and **byte-compatible with the TypeScript SDK**.
-- **`publish()` is non-destructive**: it computes the ID and writes it only into the registry's *copy* of the manifest. Your source `skill.yaml`/`skill.json` is never modified. (`cmd_build` writes the stamped manifest into `dist/` only.)
+- **`publish()` is non-destructive**: it computes the ID and writes it only into the registry's *copy* of the manifest. Your source `SKILL.md`/`skill.yaml`/`skill.json` is never modified. (`cmd_build` writes the stamped manifest into `dist/` only.)
 - Published `version` is **full SemVer** — `1.0.0`, `1.2.3-rc.1`, `1.0.0+build.5` all validate; the same grammar is reused by dir-name parsing (`<name>-<version>`), git tags, and the JSON schema (`spec/versioning.py:SEMVER_PATTERN` is the single source of truth).
 - `validate --deep` recomputes the hash and fails on mismatch (`validate_skill_id`), and runs **transitive** dependency-cycle detection (resolving peers through the registry — see below).
 - `install` re-verifies integrity by default (recomputes the ID against the registry's recorded one); `--no-verify` skips it.
@@ -67,5 +67,5 @@ Every skill has a SPIFFE-inspired immutable ID: `skill://sha256/<digest>/<name>@
 
 ## Conventions
 
-- Manifests may be `skill.yaml` **or** `skill.json`; nearly every code path probes `skill.yaml` first, then falls back to `.json`. Preserve that ordering when adding new manifest handling.
+- The manifest is `SKILL.md` (YAML frontmatter between `---` delimiters + a Markdown body of agent-facing instructions) — the Anthropic-standard skill format and now the preferred one. Legacy pure `skill.yaml`/`skill.yml`/`skill.json` files are still read for backward compatibility but are deprecated. Every code path that locates a manifest (`find_manifest_file` in `validation.py`, and the duplicated `_manifest_path` probes in `registry.py` and `frontend/api/routes/skills.py`) probes in the fixed order `SKILL.md` → `skill.yaml` → `skill.yml` → `skill.json`; preserve that ordering when adding new manifest handling. `_parse_frontmatter()` does the frontmatter split/parse and is reused by every writer (`registry.py`'s `_write_skill_md`, `cli/src/main.py`'s `cmd_build`) to splice an updated frontmatter block back in while preserving the existing Markdown body verbatim.
 - The Python and TypeScript ID/manifest contracts must stay byte-compatible — `computeSkillId` in TS mirrors `compute_skill_id` in Python.
