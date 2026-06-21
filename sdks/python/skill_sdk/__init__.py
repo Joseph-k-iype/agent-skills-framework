@@ -7,6 +7,7 @@ from .versioning import SemVer, satisfies, resolve_latest, git_tag_skill
 from .graph import FalkorDBConnector
 from .sources import LocalSource, GitSource, create_source
 from .adapter import generate_skill_doc
+from .evaluation import evaluate_skill, EvaluationReport
 
 __all__ = [
     "BaseSkill",
@@ -30,4 +31,6 @@ __all__ = [
     "GitSource",
     "create_source",
     "generate_skill_doc",
+    "evaluate_skill",
+    "EvaluationReport",
 ]

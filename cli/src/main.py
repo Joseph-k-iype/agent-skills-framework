@@ -22,6 +22,7 @@ from skill_sdk.hashing import compute_skill_id, validate_skill_id
 from skill_sdk.adapter import generate_skill_doc
 from skill_sdk.graph import FalkorDBConnector
 from skill_sdk.git_verify import verify_against_git
+from skill_sdk.evaluation import evaluate_skill
 
 GRAPH_HOST_ENV = "SKILLS_GRAPH_HOST"
 GRAPH_PORT_ENV = "SKILLS_GRAPH_PORT"
@@ -356,6 +357,47 @@ def cmd_doc(args):
         sys.exit(1)
 
 
+def cmd_evaluate(args):
+    target = Path(args.path)
+    manifest_file = find_manifest_file(target)
+    if not manifest_file:
+        print(f"Error: no SKILL.md, skill.yaml, skill.yml, or skill.json found in {target}")
+        sys.exit(1)
+
+    judge = args.judge
+    if judge and judge != "none":
+        os.environ["SKILLS_EVAL_MODEL"] = judge
+
+    registry_path = Path(args.registry) if args.registry else Path.cwd() / "registry"
+    report = evaluate_skill(target, judge=judge, registry_path=registry_path)
+
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        status_icon = "✓" if not report.structural_errors else "✗"
+        print(f"{status_icon} {report.skill_name}@{report.skill_version}")
+        print(f"  Judge status: {report.judge_status}" + (
+            f" ({report.judge_skip_reason})" if report.judge_skip_reason else ""
+        ))
+        if report.structural_errors:
+            print(f"  Structural errors ({len(report.structural_errors)}):")
+            for err in report.structural_errors:
+                print(f"    - {err}")
+        for warning in report.structural_warnings:
+            print(f"  ⚠ {warning}")
+        for finding in report.content_critic_findings:
+            print(f"  [content] {finding.get('severity', 'info')}: {finding.get('message', '')}")
+        te = report.test_executor
+        if te.total:
+            print(f"  Test cases: {te.passed}/{te.total} passed")
+        if report.overall_score is not None:
+            print(f"  Overall score: {report.overall_score}")
+        print(f"  {report.summary}")
+
+    if report.structural_errors:
+        sys.exit(1)
+
+
 def cmd_verify(args):
     registry = _get_registry(args)
     try:
@@ -525,6 +567,15 @@ def main():
     doc_p.add_argument("--format", default="markdown", choices=["markdown", "json"], help="Output format")
     doc_p.add_argument("--output", help="Output file path")
 
+    eval_p = sub.add_parser("evaluate", help="Run the skill evaluation framework (structural + agentic content/test judging)")
+    eval_p.add_argument("path", nargs="?", default=".", help="Skill directory")
+    eval_p.add_argument(
+        "--judge",
+        help="LangChain model spec 'provider:model' (e.g. anthropic:claude-haiku-4-5), or 'none' to force-skip judging",
+    )
+    eval_p.add_argument("--format", default="markdown", choices=["markdown", "json"], help="Output format")
+    eval_p.add_argument("--registry", help="Path to registry directory (for feedback memory)")
+
     verify_p = sub.add_parser("verify", help="Verify a published skill's integrity")
     verify_p.add_argument("name", help="Skill name")
     verify_p.add_argument("--registry", help="Path to registry directory")
@@ -573,6 +624,7 @@ def main():
         "list": cmd_list,
         "info": cmd_info,
         "doc": cmd_doc,
+        "evaluate": cmd_evaluate,
         "verify": cmd_verify,
         "verify-git": cmd_verify_git,
         "sync": cmd_sync,

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from cli.src.main import cmd_init, cmd_validate, cmd_list, cmd_info, cmd_doc
+from cli.src.main import cmd_init, cmd_validate, cmd_list, cmd_info, cmd_doc, cmd_evaluate
 
 
 class TestInitCommand:
@@ -78,6 +78,53 @@ class TestValidateCommand:
             deep = False
         with pytest.raises(SystemExit):
             cmd_validate(Args())
+
+
+class TestEvaluateCommand:
+    @pytest.fixture
+    def valid_skill(self, tmp_path):
+        manifest = {
+            "name": "valid-skill", "version": "1.0.0", "description": "test skill",
+            "runtime": "python", "api_version": 1, "entry": "main.py",
+        }
+        (tmp_path / "skill.json").write_text(json.dumps(manifest))
+        (tmp_path / "main.py").write_text("# placeholder")
+        (tmp_path / "tests").mkdir()
+        return tmp_path
+
+    def test_evaluate_exits_zero_with_no_judge_configured(self, valid_skill):
+        class Args:
+            path = str(valid_skill)
+            judge = None
+            format = "markdown"
+        cmd_evaluate(Args())
+
+    def test_evaluate_judge_none_skips_explicitly(self, valid_skill, capsys):
+        class Args:
+            path = str(valid_skill)
+            judge = "none"
+            format = "json"
+        cmd_evaluate(Args())
+        out = json.loads(capsys.readouterr().out)
+        assert out["judge_status"] == "skipped"
+        assert "disabled" in out["judge_skip_reason"]
+
+    def test_evaluate_exits_nonzero_on_structural_errors(self, tmp_path):
+        (tmp_path / "skill.json").write_text('{"name": "incomplete"}')
+        class Args:
+            path = str(tmp_path)
+            judge = None
+            format = "markdown"
+        with pytest.raises(SystemExit):
+            cmd_evaluate(Args())
+
+    def test_evaluate_no_manifest_exits_nonzero(self, tmp_path):
+        class Args:
+            path = str(tmp_path)
+            judge = None
+            format = "markdown"
+        with pytest.raises(SystemExit):
+            cmd_evaluate(Args())
 
 
 class TestListCommand:
