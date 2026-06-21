@@ -11,6 +11,7 @@ import {
   Hash,
   Terminal,
   Download,
+  ClipboardCheck,
 } from 'lucide-react'
 import {
   ReactFlow,
@@ -25,9 +26,10 @@ import '@xyflow/react/dist/style.css'
 import { api } from '../lib/api'
 import { shortHash } from '../lib/utils'
 import InstallModal from '../components/InstallModal'
+import EvaluationPanel from '../components/EvaluationPanel'
 import { RequirePermission } from '../components/RequireRole'
 
-type Tab = 'manifest' | 'docs' | 'versions' | 'dependencies'
+type Tab = 'manifest' | 'docs' | 'versions' | 'dependencies' | 'evaluation'
 
 function DepNode({ data }: { data: { label: string; type: string } }) {
   const colors: Record<string, string> = {
@@ -174,6 +176,7 @@ export default function SkillDetail() {
     { key: 'docs', label: 'Documentation', icon: Terminal },
     { key: 'versions', label: 'Versions', icon: Layers },
     { key: 'dependencies', label: 'Dependencies', icon: GitBranch },
+    { key: 'evaluation', label: 'Evaluation', icon: ClipboardCheck },
   ]
 
   return (
@@ -382,6 +385,10 @@ export default function SkillDetail() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'evaluation' && (
+          <EvaluationPanel skillName={name!} version={detail.latest} />
         )}
       </div>
 

@@ -21,7 +21,13 @@ def _make_skill(tmp: Path, manifest=MANIFEST):
     (tmp / "skill.json").write_text(json.dumps(manifest))
 
 
-def test_evaluate_skill_skipped_when_no_judge_configured():
+def test_evaluate_skill_skipped_when_no_judge_configured(monkeypatch):
+    # _build_model() calls load_dotenv(), which would re-populate
+    # SKILLS_EVAL_MODEL from a developer's real repo-root .env even after we
+    # delenv it here — stub load_dotenv() itself so this test is deterministic
+    # regardless of ambient machine config.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    monkeypatch.delenv("SKILLS_EVAL_MODEL", raising=False)
     tmp = Path(tempfile.mkdtemp())
     _make_skill(tmp)
     report = evaluate_skill(tmp)

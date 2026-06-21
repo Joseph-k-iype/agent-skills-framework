@@ -20,7 +20,10 @@ from ..security import require_api_key
 
 router = APIRouter()
 
-EVAL_REPORT_FILENAME = "eval_report.json"
+# Sibling of registry/skills/_feedback/ — NOT inside registry/skills/<name>-<version>/,
+# since that directory's file set is exactly what compute_skill_id/validate_skill_id
+# hash; writing a report there after publish would corrupt the skill's recorded id.
+EVAL_REPORTS_DIRNAME = "_eval_reports"
 
 
 class UpdateCasesRequest(BaseModel):
@@ -52,7 +55,7 @@ def _skill_dir_or_404(name: str, registry: RegistryClient) -> Path:
 
 
 def _eval_report_path(registry_path: Path, name: str, version: str) -> Path:
-    return registry_path / "skills" / f"{name}-{version}" / EVAL_REPORT_FILENAME
+    return registry_path / "skills" / EVAL_REPORTS_DIRNAME / f"{name}-{version}.json"
 
 
 def read_eval_report(registry_path: Path, name: str, version: str) -> dict[str, Any] | None:

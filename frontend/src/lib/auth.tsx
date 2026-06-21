@@ -19,7 +19,7 @@ const roleHierarchy: Record<UserRole, number> = {
 
 const rolePermissions: Record<UserRole, string[]> = {
   admin: ['*'],
-  developer: ['skill:create', 'skill:edit', 'skill:delete', 'skill:publish', 'skill:validate', 'skill:verify', 'registry:manage'],
+  developer: ['skill:create', 'skill:edit', 'skill:delete', 'skill:publish', 'skill:validate', 'skill:verify', 'skill:evaluate', 'registry:manage'],
   consumer: ['skill:install', 'skill:view', 'skill:search'],
   governance: ['skill:validate', 'skill:verify', 'skill:view', 'skill:audit'],
   viewer: ['skill:view', 'skill:search'],

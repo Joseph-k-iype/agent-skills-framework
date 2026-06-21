@@ -109,6 +109,85 @@ export interface ComplianceRow {
   permission_details: PermissionDetail[]
   capabilities: number
   errors: string[]
+  last_evaluation_score: number | null
+}
+
+export interface EvalCaseInput {
+  type: 'command' | 'event'
+  name: string
+  args?: string[]
+  kwargs?: Record<string, string>
+  payload?: Record<string, unknown>
+}
+
+export interface EvalCaseExpect {
+  mode: 'exact_match' | 'contains' | 'llm_judged'
+  value?: Record<string, unknown> | null
+  rubric?: string | null
+}
+
+export interface EvalCase {
+  id: string
+  description?: string
+  input: EvalCaseInput
+  expect: EvalCaseExpect
+}
+
+export interface TestExecutorResult {
+  case_id: string
+  mode: string
+  status: 'passed' | 'failed' | 'error' | 'skipped' | 'pending_judgment'
+  actual?: Record<string, unknown>
+  detail?: string
+  rubric?: string
+  score?: number | null
+  rationale?: string | null
+}
+
+export interface ContentCriticFinding {
+  id: string
+  severity: 'info' | 'warning' | 'error'
+  field: string
+  message: string
+  suggestion?: string
+  signature: string
+}
+
+export interface EvaluationReport {
+  skill_name: string
+  skill_version: string
+  run_at: string
+  judge_status: 'ok' | 'skipped' | 'error'
+  judge_skip_reason: string | null
+  structural_errors: string[]
+  structural_warnings: string[]
+  content_critic: {
+    findings: ContentCriticFinding[]
+    model: string | null
+  }
+  test_executor: {
+    results: TestExecutorResult[]
+    passed: number
+    failed: number
+    total: number
+  }
+  overall_score: number | null
+  summary: string
+}
+
+export interface FeedbackEntry {
+  finding_id: string
+  finding_signature: string
+  finding_text: string
+  verdict: 'accepted' | 'dismissed'
+  verdict_at: string
+  verdict_by: string | null
+  run_id: string | null
+}
+
+export interface FeedbackResponse {
+  skill_name: string
+  entries: FeedbackEntry[]
 }
 
 export interface DeploymentsResponse {

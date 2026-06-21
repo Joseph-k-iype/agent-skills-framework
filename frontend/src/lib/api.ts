@@ -76,6 +76,34 @@ export const api = {
     compliance: () => fetchJSON<{ skills: import('./types').ComplianceRow[] }>('/skills/compliance'),
     impact: (name: string) =>
       fetchJSON<import('./types').ImpactResult>(`/skills/${encodeURIComponent(name)}/impact`),
+    evaluation: {
+      cases: (name: string) =>
+        fetchJSON<{ cases: import('./types').EvalCase[] }>(`/skills/${encodeURIComponent(name)}/evaluation/cases`),
+      updateCases: (name: string, cases: import('./types').EvalCase[]) =>
+        fetchJSON<{ success: boolean; cases: import('./types').EvalCase[] }>(`/skills/${encodeURIComponent(name)}/evaluation/cases`, {
+          method: 'PUT',
+          body: JSON.stringify({ cases }),
+        }),
+      run: (name: string, judge?: string | null) =>
+        fetchJSON<import('./types').EvaluationReport>(`/skills/${encodeURIComponent(name)}/evaluation/run`, {
+          method: 'POST',
+          body: JSON.stringify({ judge: judge ?? null }),
+        }),
+      latest: (name: string, version?: string) => {
+        const params = version ? `?version=${encodeURIComponent(version)}` : ''
+        return fetchJSON<import('./types').EvaluationReport>(`/skills/${encodeURIComponent(name)}/evaluation/latest${params}`)
+      },
+      feedback: (name: string) =>
+        fetchJSON<import('./types').FeedbackResponse>(`/skills/${encodeURIComponent(name)}/evaluation/feedback`),
+      submitFeedback: (
+        name: string,
+        body: { finding_id: string; finding_signature: string; finding_text: string; verdict: 'accepted' | 'dismissed'; run_id?: string | null },
+      ) =>
+        fetchJSON<{ success: boolean; entry: import('./types').FeedbackEntry }>(`/skills/${encodeURIComponent(name)}/evaluation/feedback`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+    },
   },
 
   audit: {

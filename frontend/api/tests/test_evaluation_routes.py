@@ -99,6 +99,36 @@ def test_run_evaluation_writes_sidecar_and_updates_compliance(client, monkeypatc
     assert row["last_evaluation_score"] == 87.5
 
 
+def test_run_evaluation_does_not_corrupt_skill_id(client, monkeypatch):
+    # The report sidecar must NOT land inside registry/skills/<name>-<version>/ —
+    # that directory's file set is exactly what compute_skill_id/validate_skill_id
+    # hash, so writing a report there after publish would invalidate the skill.
+    scaffold_res = _scaffold(client)
+    skill_dir = Path(scaffold_res["path"])
+
+    def fake_evaluate_skill(skill_path, judge=None, registry_path=None):
+        report = EvaluationReport(
+            skill_name="eval-skill",
+            skill_version="1.0.0",
+            run_at="2026-01-01T00:00:00+00:00",
+            judge_status="skipped",
+            judge_skip_reason="judge explicitly disabled (--judge none)",
+            test_executor=ExecutorSummary(total=0),
+        )
+        return report
+
+    monkeypatch.setattr("api.routes.evaluation.evaluate_skill", fake_evaluate_skill)
+
+    r = client.post("/api/skills/eval-skill/evaluation/run", json={"judge": "none"})
+    assert r.status_code == 200, r.text
+
+    assert not (skill_dir / "eval_report.json").exists()
+
+    r = client.post("/api/skills/eval-skill/validate")
+    assert r.status_code == 200
+    assert r.json()["valid"] is True
+
+
 def test_latest_evaluation_404_when_none_run(client):
     _scaffold(client)
     r = client.get("/api/skills/eval-skill/evaluation/latest")

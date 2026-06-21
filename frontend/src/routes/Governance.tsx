@@ -191,6 +191,7 @@ export default function Governance() {
                   <th className="pb-2 pr-4 font-medium">Permissions</th>
                   <th className="pb-2 pr-4 font-medium">Capabilities</th>
                   <th className="pb-2 pr-4 font-medium">Compliance</th>
+                  <th className="pb-2 pr-4 font-medium">Eval Score</th>
                   {canAudit && <th className="pb-2 font-medium">Impact</th>}
                 </tr>
               </thead>
@@ -216,6 +217,19 @@ export default function Governance() {
                           <span className="badge bg-red-600/10 text-red-400" title={r.errors.join('; ')}>Invalid</span>
                         )}
                       </td>
+                      <td className="py-3 pr-4">
+                        {r.last_evaluation_score == null ? (
+                          <span className="text-gray-600">—</span>
+                        ) : (
+                          <span className={`badge ${
+                            r.last_evaluation_score >= 80 ? 'bg-emerald-600/10 text-emerald-400' :
+                            r.last_evaluation_score >= 50 ? 'bg-amber-600/10 text-amber-400' :
+                            'bg-red-600/10 text-red-400'
+                          }`}>
+                            {r.last_evaluation_score.toFixed(0)}
+                          </span>
+                        )}
+                      </td>
                       {canAudit && (
                         <td className="py-3">
                           <button
@@ -229,7 +243,7 @@ export default function Governance() {
                     </tr>
                     {canAudit && impactTarget === r.name && (
                       <tr className="border-b border-gray-800/50 bg-gray-900/40">
-                        <td colSpan={6} className="py-3 px-4 text-xs">
+                        <td colSpan={7} className="py-3 px-4 text-xs">
                           {impactLoading ? (
                             <span className="text-gray-500">Loading downstream impact...</span>
                           ) : !impact || impact.count === 0 ? (
