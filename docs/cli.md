@@ -121,7 +121,37 @@ skill verify <name> [--registry <path>] [--version <version>]
 
 Recomputes the stored skill's content hash and compares it to what's recorded
 in the index (defaults to `latest`). Exits non-zero with the mismatch reason
-on failure.
+on failure. This only checks the registry's *stored copy* against its own
+recorded id — it never looks at git. For that, see `verify-git` below.
+
+## `verify-git [name]`
+
+```bash
+skill verify-git <name> [--version <version>] [--registry <path>]
+skill verify-git --all [--registry <path>]
+```
+
+Cross-checks a published skill against the git tag recorded at publish time
+(`skill/<name>/<version>`, as written into `index.yaml`'s `git_tags`). Checks
+out that tag into a disposable `git worktree`, searches the checked-out tree
+for the manifest matching `<name>@<version>`, recomputes its content-addressed
+id, and compares it against the id recorded in the index — catching drift
+between what's in the registry and what's actually in git history (e.g. a
+skill published from an uncommitted working tree, then committed afterward
+under a different tree). `--all` loops every skill in the registry instead of
+one. Per skill, prints one of:
+
+- `✓ name@version matches git tag ...` — hashes agree.
+- `– name@version: skipped (no git tag recorded)` — not a failure; the skill
+  was published with `--no-tag` or `auto_tag=False`, or has no recorded tag.
+- `✗ name: <reason>` — hash mismatch, the tag doesn't resolve, or no manifest
+  for `name@version` was found inside the tagged tree.
+
+Exits non-zero if any skill reports a mismatch (skips don't count as
+failures). `make verify-published` runs `verify-git --all` against the
+repo's own `registry/`; it's wired into CI (`.github/workflows/ci.yml`) as a
+non-blocking step (`continue-on-error`) since it can flag historical drift
+unrelated to the current change under review.
 
 ## `sync`
 
@@ -147,7 +177,16 @@ skill graph query [--graph-host <host>] [--graph-port <port>] \
 Thin CLI over `FalkorDBConnector` (see
 [python-sdk.md#graphpy--falkordbconnector](./python-sdk.md#graphpy--falkordbconnector)).
 `connect` just tests reachability. `register` loads a skill's manifest and
-mirrors it into the graph. `query` looks up skills by capability or runs
-impact analysis from a skill ID. All three require a reachable FalkorDB/Redis
-instance — there is no local-only fallback at the CLI layer (the dashboard's
-Knowledge Graph page has one; the CLI does not).
+mirrors it into the graph (capabilities, dependencies, *and* permissions —
+each declared `{resource, actions}` permission becomes a `Permission` node
+linked to the skill via a `REQUESTS` relationship). `query --impact-id <id>`
+walks **forward** dependencies (`(sv)-[:DEPENDS_ON*]->(dep)`) — i.e. what the
+given skill depends on, not what would break if it changed. For the inverse
+("what's downstream of this skill"), use the registry-only
+`/skills/{name}/impact` endpoint described in
+[frontend.md](./frontend.md#governance), not this command. All three graph
+subcommands require a reachable FalkorDB/Redis instance — there is no
+local-only fallback at the CLI layer (the dashboard's Knowledge Graph page
+has one; the CLI does not). Permission-based graph lookups
+(`find_skills_by_permission`) are currently only exposed through the frontend
+API's `/graph/query` route (`permission_resource` param), not this CLI.

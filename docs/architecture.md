@@ -94,9 +94,19 @@ details: [content-addressing.md](./content-addressing.md).
    additional versions from configured `local` or `git` sources into the same
    index.
 9. **Graph** (optional) — `skill graph register` / the Knowledge Graph page
-   can mirror a skill's capabilities/dependencies into FalkorDB for capability
-   search and impact analysis. This is fully optional — missing `redis` or a
-   failed connection degrades to "not connected" rather than raising.
+   can mirror a skill's capabilities/dependencies/permissions into FalkorDB
+   for capability/permission search and forward impact analysis (what a
+   skill depends on). `publish()` now also triggers this automatically,
+   best-effort, when `SKILLS_GRAPH_HOST` is set. This is fully optional —
+   missing `redis` or a failed connection degrades to "not connected" rather
+   than raising. For downstream impact ("what depends on this skill") the
+   registry-only `find_downstream_skills()` / Governance page's "Show Impact"
+   needs none of this.
+10. **Verify against git** (optional) — `skill verify-git` / `make
+    verify-published` checks out a skill's recorded git tag into a disposable
+    worktree and recomputes its id, catching drift between the registry and
+    git history that `skill verify`'s structural check can't see. Wired into
+    `.github/workflows/ci.yml` as a non-blocking step.
 
 ## Why three different runners read the registry the same way
 

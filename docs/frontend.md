@@ -96,11 +96,38 @@ reimplementation of registry logic in the API layer.
 | `/skills/:name` | Skill Detail | Tabs for manifest (raw manifest file text, falling back to parsed JSON), documentation (the `SKILL.md` Markdown body, falling back to generated docs via `skill_sdk.adapter`), versions (SemVer-sorted), and dependencies, plus a Valid/Invalid badge from the validation API. Drives the Install modal. |
 | `/registry` | Registry | Shows configured sources (local/git), lets you add a new source (`POST /api/registry/sources`, gated) and trigger a sync (`POST /api/registry/sync`, gated) — surfaces real `synced`/`errors` counts from the SDK's `sync_from_sources()`. |
 | `/graph` | Knowledge Graph | Renders all registry skills as nodes in a radial layout via `@xyflow/react` using only local registry data (no FalkorDB required). If you connect to a running FalkorDB instance (`POST /api/graph/connect`), you unlock capability search and impact-analysis queries (`POST /api/graph/query`) and skill registration into the graph (`POST /api/graph/register`, gated). Degrades gracefully — no FalkorDB, no Redis, no crash, just the local-only view. |
-| `/governance` | Governance | One-shot compliance table (`GET /api/skills/compliance`) — per-skill validity, permission/capability counts, and validation errors — driving policy/stat rollups. Gated to `governance`+ role in the sidebar. |
+| `/governance` | [Governance](#governance) | One-shot compliance table (`GET /api/skills/compliance`) — per-skill validity, permission/capability counts, and validation errors — plus a "Permissions by Resource" audit panel and a per-skill downstream "Show Impact" action. Gated to `governance`+ role in the sidebar. |
 | `/deployments` | Deployments | Real deployment targets: the local registry (always present, with live skill count and path) plus one entry per configured source. Per-source skill counts are explicitly `null` (not fabricated) since the registry doesn't track per-source attribution. Last-sync timestamp is read from the audit log. |
 | `/audit` | Audit Log | Full history from `GET /api/audit`, newest first, with relative timestamps and filters (all / publish / install / errors). Every mutating backend action (publish, install, scaffold, source-add, sync) appends here — nothing in this view is synthesized client-side. |
 | `/settings` | Settings | Shows the real registry workspace path, the real `auto_tag` setting, and whether API-key auth is currently required — all read from `GET /api/registry`. Also hosts the role switcher, with an explicit warning that it's a client-side preview only. |
 | `*` | Not Found | Catch-all 404 with a link back to the Dashboard. |
+
+### Governance
+
+Two pieces beyond the base compliance table, both gated behind
+`useAuth().can('skill:audit')`:
+
+- **Permissions by Resource** — a local-first audit panel, built entirely
+  client-side from `permission_details` (the full `{resource, actions}[]`
+  list now returned per skill by `GET /api/skills/compliance`, not just a
+  count). Grouped by `resource` so you can see every skill that requests a
+  given resource and which actions it asked for, with zero FalkorDB
+  dependency.
+- **Show Impact** — a per-row action that lazily fetches
+  `GET /api/skills/{name}/impact`, which computes the **downstream** skills
+  that depend on this one (directly or transitively) purely from the local
+  registry's declared `dependencies.skills` — no FalkorDB required. This is
+  deliberately a different traversal from the FalkorDB `find_impact`
+  Cypher query exposed via `POST /api/graph/query` with `impact_id`, which
+  walks **forward** dependencies (what the skill itself depends on) and is
+  unchanged because the CLI's `--impact-id` flag and its docs depend on that
+  direction. Use `/skills/{name}/impact` to answer "what breaks if I change
+  this skill," and `impact_id` to answer "what does this skill depend on."
+
+If a FalkorDB instance is connected, permissions are also queryable there
+(`find_skills_by_permission`, surfaced via the Knowledge Graph page's "By
+Permission" mode and `POST /api/graph/query` with `permission_resource`) —
+but the Governance panel itself never needs it.
 
 ### Role-based UI gating (client-side only)
 
@@ -121,16 +148,17 @@ gated by `require_api_key` when `SKILLS_API_KEY` is set (see below).
 | GET | `/api/health` | liveness check |
 | GET | `/api/dashboard/stats` | aggregate counts for the Dashboard |
 | GET | `/api/skills` | `{name: {latest, versions, ids, locations}}` for every skill |
-| GET | `/api/skills/compliance` | per-skill validity/permissions/capabilities/errors in one call |
+| GET | `/api/skills/compliance` | per-skill validity/permissions (count + full `permission_details`)/capabilities/errors in one call |
 | GET | `/api/skills/{name}` | single skill's registry entry |
 | GET | `/api/skills/{name}/manifest` | parsed manifest + raw file text |
 | GET | `/api/skills/{name}/doc?format=markdown\|json` | generated docs via `skill_sdk.adapter` |
 | GET | `/api/skills/{name}/versions` | SemVer-ascending version list + ids |
+| GET | `/api/skills/{name}/impact` | `{downstream: [...], count}` — registry-only transitive dependents, see [Governance](#governance) |
 | POST | `/api/skills/{name}/validate` | structural validation errors + lint warnings |
 | POST | `/api/skills/{name}/verify?version=` | recomputes and checks the content-addressed ID |
 | POST 🔒 | `/api/skills/{name}/install` | installs into `workspace/installed/<name>` (or a custom sandboxed target); body: `{version?, target?, verify}` |
 | POST 🔒 | `/api/skills/build` | validates + computes the would-be skill ID for a workspace path; body: `{path}` |
-| POST 🔒 | `/api/skills/publish` | publishes a workspace skill dir into the registry; body: `{path, force}` |
+| POST 🔒 | `/api/skills/publish` | publishes a workspace skill dir into the registry; body: `{path, force}`. Also triggers best-effort FalkorDB sync if `SKILLS_GRAPH_HOST` is set — see [Configuration](#configuration-environment-variables) |
 | POST 🔒 | `/api/skills/scaffold` | writes a new skill dir (manifest + entry stub + extra files) into the workspace, validates it, optionally publishes; body: `{manifest, files?, publish?, force?}` |
 | GET | `/api/registry` | sources, skill count, `auto_tag`, `workspace`, `auth_required` |
 | GET | `/api/registry/sources` | raw source list |
@@ -139,8 +167,8 @@ gated by `require_api_key` when `SKILLS_API_KEY` is set (see below).
 | GET | `/api/audit?limit=200` | newest-first audit entries |
 | GET | `/api/deployments` | local registry + configured sources as deployment targets |
 | POST | `/api/graph/connect` | test a FalkorDB connection |
-| POST 🔒 | `/api/graph/register` | register a skill manifest into FalkorDB |
-| POST | `/api/graph/query` | query by `capability` or `impact_id` |
+| POST 🔒 | `/api/graph/register` | register a skill manifest into FalkorDB (capabilities, dependencies, and permissions) |
+| POST | `/api/graph/query` | query by `capability`, `impact_id` (forward dependencies), or `permission_resource` |
 
 Reads are always open, even when an API key is configured — put the dashboard
 behind your own gateway if reads must also be protected (see
@@ -205,6 +233,8 @@ npm run test:watch  # vitest watch mode
 | `SKILLS_WORKSPACE` | `<repo>/workspace` | Sandbox root for scaffold/build/publish/install/source paths. Created automatically. |
 | `SKILLS_API_KEY` | unset | When set, mutating endpoints require `X-API-Key: <value>` or `Authorization: Bearer <value>`. Unset = open (local dev). |
 | `VITE_API_KEY` | unset | Build-time value the frontend attaches as `X-API-Key` on every request. Must match `SKILLS_API_KEY` server-side. |
+| `SKILLS_GRAPH_HOST` | unset | When set, `deps.py` constructs a `FalkorDBConnector` and passes it into the shared `RegistryClient`, so every `publish`/`scaffold(...,publish=True)` call best-effort syncs to FalkorDB afterward. Unset = no graph dependency at all (default). |
+| `SKILLS_GRAPH_PORT` | `6379` | Port for the above, only read when `SKILLS_GRAPH_HOST` is set. |
 
 ## Security model
 

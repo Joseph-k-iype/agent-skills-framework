@@ -12,7 +12,7 @@ manifest spec, content-addressing, testing, frontend, security) lives in
 - `spec/` — Skill manifest JSON Schema and specification docs
 - `sdks/python/` — Python SDK (`skill_sdk` package with `BaseSkill`, `SkillContext`, `RegistryClient`, `validate_manifest`, `compute_skill_id`, `FalkorDBConnector`, `SemVer`)
 - `sdks/typescript/` — TypeScript SDK (Skill interface + types + `computeSkillId`)
-- `cli/` — CLI tool: `skill init`, `validate`, `build`, `publish`, `install`, `list`, `info`, `doc`, `verify`, `sync`, `graph`
+- `cli/` — CLI tool: `skill init`, `validate`, `build`, `publish`, `install`, `list`, `info`, `doc`, `verify`, `verify-git`, `sync`, `graph`
 - `registry/` — Local filesystem registry with `index.yaml`
 - `skills/` — Reference skill implementations (e.g., `data-discovery`)
 - `testing/` — Test harness for running skills in isolation
@@ -77,10 +77,15 @@ skill list                    # List registry (shows hash snippets)
 skill info my-skill           # Show skill details
 skill doc                     # Generate markdown/json documentation
 skill verify my-skill         # Verify integrity (hash matches content)
+skill verify-git my-skill     # Cross-check published id against its git tag (--all for every skill)
 skill sync --source-url <url> # Sync registry from remote sources
-skill graph register          # Register skill in FalkorDB knowledge graph
+skill graph register          # Register skill in FalkorDB knowledge graph (capabilities, deps, permissions)
 skill graph query --capability <c>  # Query graph by capability
 ```
+
+`publish` best-effort syncs to FalkorDB automatically when `SKILLS_GRAPH_HOST`
+is set (env var, or `--graph-host`/`--graph-port` flags) — no separate
+`graph register` step needed. See [`docs/cli.md`](docs/cli.md) for details.
 
 ## Testing
 
@@ -111,6 +116,13 @@ Notes:
 
 Optional FalkorDB integration for:
 - **Capability graph**: which skills provide which capabilities
-- **Dependency graph**: skill dependency chains and impact analysis
+- **Permission graph**: which skills request which resources/actions (`REQUESTS` edges to `Permission` nodes)
+- **Dependency graph**: skill dependency chains and forward impact analysis (`--impact-id`, what a skill depends on)
 - **Deployment graph**: where skills are deployed and their status
-- **Discovery**: find skills by capability, trace deployment lineage
+- **Discovery**: find skills by capability or permission resource, trace deployment lineage
+
+For **downstream** impact ("what breaks if I change this skill") use the
+registry-only `find_downstream_skills()` / `GET /api/skills/{name}/impact` —
+no FalkorDB required, and intentionally a different traversal direction than
+`--impact-id`. See [`docs/python-sdk.md`](docs/python-sdk.md) and
+[`docs/frontend.md`](docs/frontend.md#governance).

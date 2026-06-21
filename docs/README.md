@@ -24,7 +24,7 @@ start here.
 spec/             Skill manifest JSON Schema + spec docs
 sdks/python/      Python SDK (skill_sdk) — source of truth for the ID/manifest contract
 sdks/typescript/  TypeScript SDK — byte-compatible mirror of the Python hashing contract
-cli/              `skill` CLI (init, validate, build, publish, install, list, info, doc, verify, sync, graph)
+cli/              `skill` CLI (init, validate, build, publish, install, list, info, doc, verify, verify-git, sync, graph)
 registry/         Filesystem skill registry (index.yaml + copied, content-addressed skill trees)
 skills/           Reference skill implementations (e.g. data-discovery)
 testing/          Test harness for running a skill's lifecycle in isolation
