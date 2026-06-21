@@ -88,7 +88,7 @@ class EvaluationReport:
     content_critic_findings: list[dict[str, Any]] = field(default_factory=list)
     content_critic_model: str | None = None
     test_executor: ExecutorSummary = field(default_factory=ExecutorSummary)
-    agent_execution: "AgentExecutionSummary | None" = None
+    agent_execution: AgentExecutionSummary | None = None
     overall_score: float | None = None
     summary: str = ""
 
@@ -120,7 +120,7 @@ class EvaluationReport:
 _SEVERITY_WEIGHT = {"error": 20, "warning": 10, "info": 2}
 
 
-def compute_overall_score(report: "EvaluationReport") -> float | None:
+def compute_overall_score(report: EvaluationReport) -> float | None:
     components: list[float] = []
     te = report.test_executor
     if te.total:
