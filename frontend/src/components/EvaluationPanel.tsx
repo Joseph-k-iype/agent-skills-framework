@@ -21,33 +21,32 @@ interface EvaluationPanelProps {
   version: string
 }
 
-function judgeStatusBadge(status: 'ok' | 'skipped' | 'error', reason: string | null) {
-  if (status === 'ok') return <span className="badge bg-emerald-600/10 text-emerald-400">judge: ok</span>
-  if (status === 'error') {
-    return (
-      <span className="badge bg-red-600/10 text-red-400" title={reason ?? undefined}>
-        judge: error
-      </span>
-    )
-  }
+function statusBadge(label: string, dot: string | null, title?: string) {
   return (
-    <span className="badge bg-gray-800 text-gray-400" title={reason ?? undefined}>
-      judge: skipped
+    <span className="badge border border-line bg-canvas text-ink-2" title={title}>
+      {dot && <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${dot}`} />}
+      {label}
     </span>
   )
 }
 
+function judgeStatusBadge(status: 'ok' | 'skipped' | 'error', reason: string | null) {
+  if (status === 'ok') return statusBadge('judge: ok', 'bg-ok')
+  if (status === 'error') return statusBadge('judge: error', 'bg-bad', reason ?? undefined)
+  return statusBadge('judge: skipped', null, reason ?? undefined)
+}
+
 function severityBadge(severity: string) {
-  if (severity === 'error') return <span className="badge bg-red-600/10 text-red-400">error</span>
-  if (severity === 'warning') return <span className="badge bg-amber-600/10 text-amber-400">warning</span>
-  return <span className="badge bg-gray-800 text-gray-400">info</span>
+  if (severity === 'error') return statusBadge('error', 'bg-bad')
+  if (severity === 'warning') return statusBadge('warning', 'bg-warn')
+  return statusBadge('info', null)
 }
 
 function resultStatusBadge(status: string) {
-  if (status === 'passed') return <span className="badge bg-emerald-600/10 text-emerald-400">passed</span>
-  if (status === 'failed') return <span className="badge bg-red-600/10 text-red-400">failed</span>
-  if (status === 'error') return <span className="badge bg-red-600/10 text-red-400">error</span>
-  return <span className="badge bg-gray-800 text-gray-400">{status}</span>
+  if (status === 'passed') return statusBadge('passed', 'bg-ok')
+  if (status === 'failed') return statusBadge('failed', 'bg-bad')
+  if (status === 'error') return statusBadge('error', 'bg-bad')
+  return statusBadge(status, null)
 }
 
 export default function EvaluationPanel({ skillName, version }: EvaluationPanelProps) {
@@ -181,26 +180,26 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
   return (
     <div className="space-y-6">
       <div className="card">
-        <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+        <h3 className="eyebrow mb-4 flex items-center gap-2">
           <ClipboardCheck size={14} /> Evaluation Cases
         </h3>
 
         {casesQuery.isLoading ? (
-          <p className="text-sm text-gray-500">Loading cases...</p>
+          <p className="text-sm text-ink-2">Loading cases...</p>
         ) : cases.length === 0 ? (
-          <p className="mb-4 text-sm text-gray-500">No evaluation cases defined yet.</p>
+          <p className="mb-4 text-sm text-ink-2">No evaluation cases defined yet.</p>
         ) : (
           <div className="mb-4 space-y-2">
             {cases.map((c) => (
-              <div key={c.id} className="flex items-start justify-between rounded-lg border border-gray-800 p-3">
+              <div key={c.id} className="flex items-start justify-between rounded-lg border border-line p-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-gray-200">{c.id}</span>
-                    <span className="tag bg-gray-800 text-gray-400">{c.input.type}</span>
-                    <span className="tag bg-gray-800 text-gray-400">{c.input.name}</span>
-                    <span className="tag bg-brand-600/10 text-brand-400">{c.expect.mode}</span>
+                    <span className="font-mono text-sm text-ink">{c.id}</span>
+                    <span className="tag">{c.input.type}</span>
+                    <span className="tag">{c.input.name}</span>
+                    <span className="tag border-accent-200 text-accent-600">{c.expect.mode}</span>
                   </div>
-                  {c.description && <p className="mt-1 text-xs text-gray-500">{c.description}</p>}
+                  {c.description && <p className="mt-1 text-xs text-ink-3">{c.description}</p>}
                 </div>
                 <RequirePermission actions={['skill:evaluate']}>
                   <button
@@ -217,17 +216,17 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
         )}
 
         {casesError && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-bad">
             <AlertTriangle size={14} /> {casesError}
           </div>
         )}
 
         <RequirePermission
           actions={['skill:evaluate']}
-          fallback={<p className="text-xs text-gray-600">You do not have permission to edit evaluation cases.</p>}
+          fallback={<p className="text-xs text-ink-3">You do not have permission to edit evaluation cases.</p>}
         >
-          <div className="space-y-3 rounded-lg border border-gray-800 p-3">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Add Case</p>
+          <div className="space-y-3 rounded-lg border border-line p-3">
+            <p className="eyebrow">Add Case</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <input
                 type="text"
@@ -292,7 +291,7 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
                 />
               )}
             </div>
-            {addError && <p className="text-xs text-red-400">{addError}</p>}
+            {addError && <p className="text-xs text-bad">{addError}</p>}
             <button onClick={addCase} disabled={saveCasesMutation.isPending} className="btn-secondary">
               <Plus size={14} /> Add Case
             </button>
@@ -302,12 +301,12 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
 
       <div className="card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow flex items-center gap-2">
             <Play size={14} /> Run Evaluation
           </h3>
           <RequirePermission
             actions={['skill:evaluate']}
-            fallback={<p className="text-xs text-gray-600">You do not have permission to run evaluations.</p>}
+            fallback={<p className="text-xs text-ink-3">You do not have permission to run evaluations.</p>}
           >
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -318,12 +317,12 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
                 disabled={noJudge}
                 className="input w-64 text-sm disabled:opacity-40"
               />
-              <label className="flex items-center gap-1.5 text-xs text-gray-400">
+              <label className="flex items-center gap-1.5 text-xs text-ink-2">
                 <input
                   type="checkbox"
                   checked={noJudge}
                   onChange={(e) => setNoJudge(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-gray-600 bg-gray-800 text-brand-600"
+                  className="h-3.5 w-3.5 rounded border-line bg-surface text-accent-500"
                 />
                 deterministic only
               </label>
@@ -336,37 +335,37 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
         </div>
 
         {runMutation.isError && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-bad">
             <AlertTriangle size={14} />
             {runMutation.error instanceof Error ? runMutation.error.message : 'Evaluation run failed'}
           </div>
         )}
 
         {latestQuery.isLoading ? (
-          <p className="text-sm text-gray-500">Loading latest report...</p>
+          <p className="text-sm text-ink-2">Loading latest report...</p>
         ) : !report ? (
-          <p className="text-sm text-gray-500">No evaluation has been run for v{version} yet.</p>
+          <p className="text-sm text-ink-2">No evaluation has been run for v{version} yet.</p>
         ) : (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-3">
               {judgeStatusBadge(report.judge_status, report.judge_skip_reason)}
               {report.overall_score != null && (
-                <span className="badge bg-brand-600/10 text-brand-400">score: {report.overall_score}</span>
+                <span className="badge border border-line bg-canvas text-ink-2">score: {report.overall_score}</span>
               )}
-              <span className="text-xs text-gray-600">{new Date(report.run_at).toLocaleString()}</span>
+              <span className="text-xs text-ink-3">{new Date(report.run_at).toLocaleString()}</span>
             </div>
 
-            <p className="text-sm text-gray-400">{report.summary}</p>
+            <p className="text-sm text-ink-2">{report.summary}</p>
 
             {report.judge_status !== 'ok' && report.judge_skip_reason && (
               <div>
-                <p className={`mb-1 text-xs font-medium uppercase tracking-wider ${
-                  report.judge_status === 'error' ? 'text-red-400' : 'text-gray-500'
+                <p className={`eyebrow mb-1 ${
+                  report.judge_status === 'error' ? 'text-bad' : 'text-ink-3'
                 }`}>
                   {report.judge_status === 'error' ? 'Judge Error' : 'Judge Skipped'}
                 </p>
                 <p className={`whitespace-pre-wrap break-words text-sm ${
-                  report.judge_status === 'error' ? 'text-red-400' : 'text-gray-500'
+                  report.judge_status === 'error' ? 'text-bad' : 'text-ink-3'
                 }`}>
                   {report.judge_skip_reason}
                 </p>
@@ -375,8 +374,8 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
 
             {report.structural_errors.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-red-400">Structural Errors</p>
-                <ul className="list-inside list-disc space-y-1 text-sm text-red-400">
+                <p className="eyebrow mb-1 text-bad">Structural Errors</p>
+                <ul className="list-inside list-disc space-y-1 text-sm text-bad">
                   {report.structural_errors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
               </div>
@@ -384,38 +383,39 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
 
             {report.structural_warnings.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-amber-400">Structural Warnings</p>
-                <ul className="list-inside list-disc space-y-1 text-sm text-amber-400">
+                <p className="eyebrow mb-1 text-warn">Structural Warnings</p>
+                <ul className="list-inside list-disc space-y-1 text-sm text-warn">
                   {report.structural_warnings.map((w, i) => <li key={i}>{w}</li>)}
                 </ul>
               </div>
             )}
 
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
+              <p className="eyebrow mb-2">
                 Content Critic Findings {report.content_critic.model ? `(${report.content_critic.model})` : ''}
               </p>
               {report.content_critic.findings.length === 0 ? (
-                <p className="text-sm text-gray-500">No findings.</p>
+                <p className="text-sm text-ink-2">No findings.</p>
               ) : (
                 <div className="space-y-2">
                   {report.content_critic.findings.map((f) => {
                     const verdict = feedbackBySignature.get(f.signature)
                     return (
-                      <div key={f.id} className="rounded-lg border border-gray-800 p-3">
+                      <div key={f.id} className="rounded-lg border border-line p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               {severityBadge(f.severity)}
-                              <span className="text-xs font-mono text-gray-500">{f.field}</span>
+                              <span className="text-xs font-mono text-ink-3">{f.field}</span>
                               {verdict && (
-                                <span className={`badge ${verdict === 'accepted' ? 'bg-emerald-600/10 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                                <span className="badge border border-line bg-canvas text-ink-2">
+                                  {verdict === 'accepted' && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-ok" />}
                                   {verdict}
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-sm text-gray-300">{f.message}</p>
-                            {f.suggestion && <p className="mt-1 text-xs text-gray-500">Suggestion: {f.suggestion}</p>}
+                            <p className="mt-1 text-sm text-ink">{f.message}</p>
+                            {f.suggestion && <p className="mt-1 text-xs text-ink-3">Suggestion: {f.suggestion}</p>}
                           </div>
                           <RequirePermission actions={['skill:evaluate']}>
                             <div className="flex shrink-0 gap-1">
@@ -448,16 +448,16 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
+              <p className="eyebrow mb-2">
                 Test Cases ({report.test_executor.passed}/{report.test_executor.total} passed)
               </p>
               {report.test_executor.results.length === 0 ? (
-                <p className="text-sm text-gray-500">No test cases defined.</p>
+                <p className="text-sm text-ink-2">No test cases defined.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-800 text-left text-xs text-gray-500 uppercase">
+                      <tr className="border-b border-line text-left text-xs text-ink-3 uppercase">
                         <th className="pb-2 pr-4 font-medium">Case</th>
                         <th className="pb-2 pr-4 font-medium">Mode</th>
                         <th className="pb-2 pr-4 font-medium">Status</th>
@@ -466,11 +466,11 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
                     </thead>
                     <tbody>
                       {report.test_executor.results.map((r) => (
-                        <tr key={r.case_id} className="border-b border-gray-800/50">
-                          <td className="py-2 pr-4 font-mono text-xs text-gray-300">{r.case_id}</td>
-                          <td className="py-2 pr-4 text-gray-400">{r.mode}</td>
+                        <tr key={r.case_id} className="border-b border-line">
+                          <td className="py-2 pr-4 font-mono text-xs text-ink-2">{r.case_id}</td>
+                          <td className="py-2 pr-4 text-ink-2">{r.mode}</td>
                           <td className="py-2 pr-4">{resultStatusBadge(r.status)}</td>
-                          <td className="py-2 text-xs text-gray-500">
+                          <td className="py-2 text-xs text-ink-3">
                             {r.detail ?? r.rationale ?? (r.score != null ? `score: ${r.score}` : '')}
                           </td>
                         </tr>
@@ -484,7 +484,7 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
         )}
 
         {report === null && latestQuery.error && !(latestQuery.error instanceof ApiError && latestQuery.error.status === 404) && (
-          <div className="flex items-center gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+          <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-bad">
             <XCircle size={14} />
             {latestQuery.error instanceof Error ? latestQuery.error.message : 'Failed to load latest evaluation'}
           </div>
@@ -493,14 +493,15 @@ export default function EvaluationPanel({ skillName, version }: EvaluationPanelP
 
       {!feedbackQuery.isLoading && (feedbackQuery.data?.entries.length ?? 0) > 0 && (
         <div className="card">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-3 flex items-center gap-2">
             <CheckCircle2 size={14} /> Feedback History
           </h3>
           <div className="space-y-1">
             {feedbackQuery.data!.entries.map((e, i) => (
               <div key={`${e.finding_id}-${i}`} className="flex items-center justify-between text-xs">
-                <span className="truncate text-gray-400">{e.finding_text}</span>
-                <span className={`badge shrink-0 ${e.verdict === 'accepted' ? 'bg-emerald-600/10 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                <span className="truncate text-ink-2">{e.finding_text}</span>
+                <span className="badge shrink-0 border border-line bg-canvas text-ink-2">
+                  {e.verdict === 'accepted' && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-ok" />}
                   {e.verdict}
                 </span>
               </div>

@@ -32,41 +32,53 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const { isAtLeast } = useAuth()
   return (
-    <aside className="flex w-64 flex-col border-r border-gray-800 bg-gray-950">
-      <div className="flex h-16 items-center gap-3 border-b border-gray-800 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-          <Package size={18} className="text-white" />
+    <aside className="flex w-64 flex-col border-r border-line bg-surface">
+      <div className="flex h-16 items-center gap-3 px-6">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink">
+          <Package size={17} className="text-surface" />
         </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-100">Agent Skills</p>
-          <p className="text-xs text-gray-500">Framework</p>
+        <div className="leading-tight">
+          <p className="text-sm font-semibold tracking-tightish text-ink">Agent Skills</p>
+          <p className="eyebrow">Framework</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-0.5 px-3 py-5">
         {navItems
           .filter((item) => !item.minRole || isAtLeast(item.minRole))
           .map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                isActive
-                  ? 'bg-brand-600/10 text-brand-400'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
-              }`
-            }
-          >
-            <item.icon size={18} />
-            {item.label}
-          </NavLink>
-        ))}
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              className={({ isActive }) =>
+                `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? 'bg-canvas text-ink'
+                    : 'text-ink-2 hover:bg-canvas hover:text-ink'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-full bg-accent-500 transition-all ${
+                      isActive ? 'w-1 opacity-100' : 'w-1 opacity-0'
+                    }`}
+                  />
+                  <item.icon
+                    size={18}
+                    className={isActive ? 'text-ink' : 'text-ink-3 group-hover:text-ink'}
+                  />
+                  {item.label}
+                </>
+              )}
+            </NavLink>
+          ))}
       </nav>
 
-      <div className="border-t border-gray-800 px-6 py-4">
-        <p className="text-xs text-gray-600">v0.1.0</p>
+      <div className="px-6 py-4">
+        <p className="font-mono text-xs text-ink-3">v0.1.0</p>
       </div>
     </aside>
   )

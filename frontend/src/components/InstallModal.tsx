@@ -57,10 +57,10 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={handleClose}>
-      <div className="w-full max-w-lg rounded-xl border border-gray-800 bg-gray-950 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm" onClick={handleClose}>
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-lift" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-100">Install Skill</h3>
+          <h3 className="text-lg font-semibold text-ink">Install Skill</h3>
           <button onClick={handleClose} className="btn-ghost p-1" aria-label="Close">
             <X size={18} />
           </button>
@@ -69,15 +69,15 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
         <RequirePermission
           actions={['skill:install']}
           fallback={
-            <div className="flex items-center gap-2 rounded-lg bg-amber-600/10 p-3 text-sm text-amber-400">
-              <AlertCircle size={16} />
+            <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-ink-2">
+              <AlertCircle size={16} className="text-warn" />
               You do not have permission to install skills
             </div>
           }
         >
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm text-gray-400">Version</label>
+              <label className="mb-1.5 block text-sm text-ink-2">Version</label>
               <select
                 value={selectedVersion}
                 onChange={(e) => setSelectedVersion(e.target.value)}
@@ -92,41 +92,41 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-gray-400">Target Path</label>
+              <label className="mb-1.5 block text-sm text-ink-2">Target Path</label>
               <input
                 type="text"
                 value={targetPath}
                 onChange={(e) => setTargetPath(e.target.value)}
                 className="input font-mono text-sm"
               />
-              <p className="mt-1 text-xs text-gray-600">Relative to the server workspace root.</p>
+              <p className="mt-1 text-xs text-ink-3">Relative to the server workspace root.</p>
             </div>
 
-            <label className="flex items-center gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/50">
+            <label className="flex items-center gap-3 rounded-lg border border-line p-3 cursor-pointer hover:bg-canvas">
               <input
                 type="checkbox"
                 checked={verify}
                 onChange={(e) => setVerify(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-brand-600"
+                className="h-4 w-4 rounded border-line bg-surface text-accent-500"
               />
               <div>
-                <p className="text-sm font-medium text-gray-200">Verify content integrity</p>
-                <p className="text-xs text-gray-500">Confirm hash matches the stored ID</p>
+                <p className="text-sm font-medium text-ink">Verify content integrity</p>
+                <p className="text-xs text-ink-2">Confirm hash matches the stored ID</p>
               </div>
             </label>
 
             {status === 'done' && (
-              <div className="rounded-lg bg-emerald-600/10 p-3 text-sm text-emerald-400">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={16} />
+              <div className="rounded-lg border border-line bg-canvas p-3 text-sm text-ink-2">
+                <div className="flex items-center gap-2 text-ink">
+                  <CheckCircle2 size={16} className="text-ok" />
                   Installed {skillName}@{selectedVersion}
                 </div>
-                {resultPath && <p className="mt-1 font-mono text-xs text-emerald-500/80 break-all">{resultPath}</p>}
+                {resultPath && <p className="mt-1 font-mono text-xs text-ink-3 break-all">{resultPath}</p>}
               </div>
             )}
 
             {status === 'error' && (
-              <div className="flex items-start gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+              <div className="flex items-start gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-bad">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span className="break-words">{message || 'Installation failed'}</span>
               </div>

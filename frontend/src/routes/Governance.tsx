@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Shield, CheckCircle2, XCircle, AlertTriangle, Package, FileKey, Lock, GitBranch } from 'lucide-react'
+import { Shield, CheckCircle2, XCircle, Package, FileKey, Lock, GitBranch } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
@@ -29,10 +29,10 @@ export default function Governance() {
   const totalCapabilities = rows.reduce((s, r) => s + r.capabilities, 0)
 
   const stats = [
-    { label: 'Skills', value: rows.length, icon: Package, color: 'text-brand-400 bg-brand-600/10' },
-    { label: 'Passing', value: validCount, icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-600/10' },
-    { label: 'Failing', value: failCount, icon: XCircle, color: 'text-red-400 bg-red-600/10' },
-    { label: 'Capabilities', value: totalCapabilities, icon: FileKey, color: 'text-amber-400 bg-amber-600/10' },
+    { label: 'Skills', value: rows.length, icon: Package },
+    { label: 'Passing', value: validCount, icon: CheckCircle2 },
+    { label: 'Failing', value: failCount, icon: XCircle },
+    { label: 'Capabilities', value: totalCapabilities, icon: FileKey },
   ]
 
   const policies = [
@@ -66,22 +66,23 @@ export default function Governance() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div>
-        <h2 className="text-2xl font-bold text-gray-100">Governance</h2>
-        <p className="mt-1 text-sm text-gray-400">Compliance, permissions, and policy overview</p>
+        <p className="eyebrow">Governance</p>
+        <h2 className="mt-2 text-3xl font-semibold tracking-tightish text-ink">Governance</h2>
+        <p className="mt-2 text-sm text-ink-2">Compliance, permissions, and policy overview</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
+        {stats.map(({ label, value, icon: Icon }) => (
           <div key={label} className="card">
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-canvas text-ink-2">
                 <Icon size={20} />
               </div>
               <div>
-                <p className="text-sm text-gray-400">{label}</p>
-                <p className="text-2xl font-bold text-gray-100">{isLoading ? '...' : value}</p>
+                <p className="eyebrow">{label}</p>
+                <p className="mt-1 text-2xl font-light tabular-nums tracking-tightish text-ink">{isLoading ? '...' : value}</p>
               </div>
             </div>
           </div>
@@ -90,30 +91,24 @@ export default function Governance() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <Shield size={14} /> Policy Compliance
           </h3>
           <div className="space-y-3">
             {policies.map((policy) => (
-              <div key={policy.name} className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
+              <div key={policy.name} className="flex items-center justify-between rounded-lg border border-line p-3">
                 <div className="flex items-center gap-3">
-                  {policy.status === 'pass' ? (
-                    <CheckCircle2 size={16} className="text-emerald-400" />
-                  ) : policy.status === 'warn' ? (
-                    <AlertTriangle size={16} className="text-amber-400" />
-                  ) : (
-                    <AlertTriangle size={16} className="text-gray-600" />
-                  )}
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    policy.status === 'pass' ? 'bg-ok' :
+                    policy.status === 'warn' ? 'bg-warn' :
+                    'bg-ink-3'
+                  }`} />
                   <div>
-                    <p className="text-sm font-medium text-gray-200">{policy.name}</p>
-                    <p className="text-xs text-gray-500">{policy.pass}/{policy.total} passing</p>
+                    <p className="text-sm font-medium text-ink">{policy.name}</p>
+                    <p className="text-xs text-ink-3">{policy.pass}/{policy.total} passing</p>
                   </div>
                 </div>
-                <span className={`badge ${
-                  policy.status === 'pass' ? 'bg-emerald-600/10 text-emerald-400' :
-                  policy.status === 'warn' ? 'bg-amber-600/10 text-amber-400' :
-                  'bg-gray-800 text-gray-500'
-                }`}>
+                <span className="badge bg-canvas border border-line text-ink-2">
                   {policy.status}
                 </span>
               </div>
@@ -122,22 +117,22 @@ export default function Governance() {
         </div>
 
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <Lock size={14} /> Permissions &amp; Capabilities
           </h3>
           {rows.length === 0 ? (
             <div className="py-8 text-center">
-              <Lock size={32} className="mx-auto text-gray-600" />
-              <p className="mt-2 text-sm text-gray-500">No skills in registry</p>
+              <Lock size={32} className="mx-auto text-ink-3" />
+              <p className="mt-2 text-sm text-ink-2">No skills in registry</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {rows.map((r) => (
-                <div key={r.name} className="flex items-center justify-between rounded-lg border border-gray-800 p-2">
-                  <span className="text-sm text-gray-300">{r.name}</span>
+                <div key={r.name} className="flex items-center justify-between rounded-lg border border-line p-2">
+                  <span className="text-sm text-ink">{r.name}</span>
                   <div className="flex gap-2">
-                    <span className="badge bg-gray-800 text-gray-400 text-[10px]">{r.permissions} perms</span>
-                    <span className="badge bg-gray-800 text-gray-400 text-[10px]">{r.capabilities} caps</span>
+                    <span className="badge bg-canvas border border-line text-ink-2 text-[10px]">{r.permissions} perms</span>
+                    <span className="badge bg-canvas border border-line text-ink-2 text-[10px]">{r.capabilities} caps</span>
                   </div>
                 </div>
               ))}
@@ -147,24 +142,24 @@ export default function Governance() {
       </div>
 
       <div className="card">
-        <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+        <h3 className="eyebrow mb-4 flex items-center gap-2">
           <FileKey size={14} /> Permissions by Resource
         </h3>
         {byResource.size === 0 ? (
           <div className="py-8 text-center">
-            <FileKey size={32} className="mx-auto text-gray-600" />
-            <p className="mt-2 text-sm text-gray-500">No skill declares any permissions</p>
+            <FileKey size={32} className="mx-auto text-ink-3" />
+            <p className="mt-2 text-sm text-ink-2">No skill declares any permissions</p>
           </div>
         ) : (
           <div className="space-y-3">
             {[...byResource.entries()].map(([resource, entries]) => (
-              <div key={resource} className="rounded-lg border border-gray-800 p-3">
-                <p className="text-sm font-medium text-gray-200">{resource}</p>
+              <div key={resource} className="rounded-lg border border-line p-3">
+                <p className="text-sm font-medium text-ink">{resource}</p>
                 <div className="mt-2 space-y-1">
                   {entries.map((e, i) => (
                     <div key={`${e.skill}-${i}`} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-400">{e.skill}</span>
-                      <span className="text-gray-500">{e.actions.join(', ')}</span>
+                      <span className="text-ink-2">{e.skill}</span>
+                      <span className="text-ink-3">{e.actions.join(', ')}</span>
                     </div>
                   ))}
                 </div>
@@ -175,17 +170,17 @@ export default function Governance() {
       </div>
 
       <div className="card">
-        <h3 className="mb-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">Skill Compliance</h3>
+        <h3 className="eyebrow mb-4">Skill Compliance</h3>
         {rows.length === 0 ? (
           <div className="py-8 text-center">
-            <Package size={32} className="mx-auto text-gray-600" />
-            <p className="mt-2 text-sm text-gray-500">No skills in registry</p>
+            <Package size={32} className="mx-auto text-ink-3" />
+            <p className="mt-2 text-sm text-ink-2">No skills in registry</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800 text-left text-xs text-gray-500 uppercase">
+                <tr className="border-b border-line text-left eyebrow">
                   <th className="pb-2 pr-4 font-medium">Skill</th>
                   <th className="pb-2 pr-4 font-medium">Runtime</th>
                   <th className="pb-2 pr-4 font-medium">Permissions</th>
@@ -195,37 +190,44 @@ export default function Governance() {
                   {canAudit && <th className="pb-2 font-medium">Impact</th>}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-line">
                 {rows.map((r) => (
                   <Fragment key={r.name}>
-                    <tr className="border-b border-gray-800/50">
+                    <tr>
                       <td className="py-3 pr-4">
-                        <p className="font-medium text-gray-200">{r.name}</p>
-                        <p className="text-xs text-gray-500">v{r.latest}</p>
+                        <p className="font-medium text-ink">{r.name}</p>
+                        <p className="font-mono text-xs text-ink-3">v{r.latest}</p>
                       </td>
                       <td className="py-3 pr-4">
-                        {r.runtime && <span className="tag bg-gray-800 text-gray-300">{r.runtime}</span>}
+                        {r.runtime && <span className="tag">{r.runtime}</span>}
                       </td>
-                      <td className="py-3 pr-4 text-gray-400">{r.permissions}</td>
-                      <td className="py-3 pr-4 text-gray-400">{r.capabilities}</td>
+                      <td className="py-3 pr-4 text-ink-2">{r.permissions}</td>
+                      <td className="py-3 pr-4 text-ink-2">{r.capabilities}</td>
                       <td className="py-3 pr-4">
                         {r.valid === null ? (
-                          <span className="text-gray-600">—</span>
+                          <span className="text-ink-3">—</span>
                         ) : r.valid ? (
-                          <span className="badge bg-emerald-600/10 text-emerald-400">Valid</span>
+                          <span className="badge bg-canvas border border-line text-ink-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-ok" />
+                            Valid
+                          </span>
                         ) : (
-                          <span className="badge bg-red-600/10 text-red-400" title={r.errors.join('; ')}>Invalid</span>
+                          <span className="badge bg-canvas border border-line text-ink-2" title={r.errors.join('; ')}>
+                            <span className="h-1.5 w-1.5 rounded-full bg-bad" />
+                            Invalid
+                          </span>
                         )}
                       </td>
                       <td className="py-3 pr-4">
                         {r.last_evaluation_score == null ? (
-                          <span className="text-gray-600">—</span>
+                          <span className="text-ink-3">—</span>
                         ) : (
-                          <span className={`badge ${
-                            r.last_evaluation_score >= 80 ? 'bg-emerald-600/10 text-emerald-400' :
-                            r.last_evaluation_score >= 50 ? 'bg-amber-600/10 text-amber-400' :
-                            'bg-red-600/10 text-red-400'
-                          }`}>
+                          <span className="badge bg-canvas border border-line text-ink-2">
+                            <span className={`h-1.5 w-1.5 rounded-full ${
+                              r.last_evaluation_score >= 80 ? 'bg-ok' :
+                              r.last_evaluation_score >= 50 ? 'bg-warn' :
+                              'bg-bad'
+                            }`} />
                             {r.last_evaluation_score.toFixed(0)}
                           </span>
                         )}
@@ -242,20 +244,20 @@ export default function Governance() {
                       )}
                     </tr>
                     {canAudit && impactTarget === r.name && (
-                      <tr className="border-b border-gray-800/50 bg-gray-900/40">
+                      <tr className="bg-canvas">
                         <td colSpan={7} className="py-3 px-4 text-xs">
                           {impactLoading ? (
-                            <span className="text-gray-500">Loading downstream impact...</span>
+                            <span className="text-ink-3">Loading downstream impact...</span>
                           ) : !impact || impact.count === 0 ? (
-                            <span className="text-gray-500">No other skills depend on {r.name}.</span>
+                            <span className="text-ink-3">No other skills depend on {r.name}.</span>
                           ) : (
                             <div>
-                              <p className="mb-1 text-gray-400">
+                              <p className="mb-1 text-ink-2">
                                 {impact.count} skill{impact.count !== 1 ? 's' : ''} would be affected if {r.name} changes:
                               </p>
                               <div className="flex flex-wrap gap-1">
                                 {impact.downstream.map((d) => (
-                                  <span key={d} className="tag bg-gray-800 text-gray-300">{d}</span>
+                                  <span key={d} className="tag">{d}</span>
                                 ))}
                               </div>
                             </div>

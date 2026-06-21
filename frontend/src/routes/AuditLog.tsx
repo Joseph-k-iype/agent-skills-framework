@@ -43,11 +43,12 @@ export default function AuditLog() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Audit Log</h2>
-          <p className="mt-1 text-sm text-gray-400">Track skill operations and changes</p>
+          <p className="eyebrow">Activity</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tightish text-ink">Audit Log</h2>
+          <p className="mt-2 text-sm text-ink-2">Track skill operations and changes</p>
         </div>
       </div>
 
@@ -56,10 +57,10 @@ export default function AuditLog() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`btn-ghost text-xs ${filter === f.key ? 'text-brand-400 bg-brand-600/10' : ''}`}
+            className={`btn-ghost text-xs ${filter === f.key ? 'bg-canvas text-ink' : ''}`}
           >
             {f.label}
-            <span className="ml-1.5 text-gray-500">({f.count})</span>
+            <span className="ml-1.5 text-ink-3">({f.count})</span>
           </button>
         ))}
       </div>
@@ -67,50 +68,50 @@ export default function AuditLog() {
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded bg-gray-800" />
+            <div key={i} className="h-16 animate-pulse rounded bg-canvas" />
           ))}
         </div>
       ) : auditLog.length === 0 ? (
         <div className="card py-16 text-center">
-          <Clock size={48} className="mx-auto text-gray-700" />
-          <p className="mt-4 text-lg font-medium text-gray-400">No audit entries</p>
-          <p className="mt-1 text-sm text-gray-500">
+          <Clock size={48} className="mx-auto text-ink-3" />
+          <p className="mt-4 text-lg font-medium text-ink-2">No audit entries</p>
+          <p className="mt-1 text-sm text-ink-3">
             Publish, install, or sync skills to see activity here
           </p>
         </div>
       ) : (
-        <div className="space-y-1">
-          {filtered.map((entry, i) => (
-            <div key={entry.id} className="card-hover flex items-start gap-4">
-              <div className="relative flex flex-col items-center">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                  entry.status === 'success' ? 'bg-emerald-600/10 text-emerald-400' :
-                  entry.status === 'error' ? 'bg-red-600/10 text-red-400' :
-                  'bg-brand-600/10 text-brand-400'
-                }`}>
+        <div className="card p-0">
+          <div className="divide-y divide-line">
+            {filtered.map((entry) => (
+              <div key={entry.id} className="flex items-start gap-4 px-5 py-3.5 transition hover:bg-canvas">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-canvas text-ink-2">
                   {entry.status === 'success' ? <CheckCircle2 size={14} /> :
                    entry.status === 'error' ? <XCircle size={14} /> :
                    <Info size={14} />}
                 </div>
-                {i < filtered.length - 1 && <div className="mt-1 w-px flex-1 bg-gray-800" />}
-              </div>
-              <div className="flex-1 pb-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-gray-200">{entry.action}</p>
-                    {entry.skillName && (
-                      <span className="badge bg-brand-600/10 text-brand-400">{entry.skillName}</span>
-                    )}
-                    {entry.version && <span className="text-xs text-gray-500">v{entry.version}</span>}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`h-1.5 w-1.5 rounded-full ${
+                        entry.status === 'success' ? 'bg-ok' :
+                        entry.status === 'error' ? 'bg-bad' :
+                        'bg-ink-3'
+                      }`} />
+                      <p className="text-sm font-medium text-ink">{entry.action}</p>
+                      {entry.skillName && (
+                        <span className="badge bg-canvas border border-line text-ink-2">{entry.skillName}</span>
+                      )}
+                      {entry.version && <span className="font-mono text-xs text-ink-3">v{entry.version}</span>}
+                    </div>
+                    <span className="shrink-0 font-mono text-xs text-ink-3" title={entry.timestamp}>
+                      {relativeTime(entry.timestamp)}
+                    </span>
                   </div>
-                  <span className="shrink-0 text-xs text-gray-600" title={entry.timestamp}>
-                    {relativeTime(entry.timestamp)}
-                  </span>
+                  {entry.details && <p className="mt-1 text-xs text-ink-3 break-words">{entry.details}</p>}
                 </div>
-                {entry.details && <p className="mt-1 text-xs text-gray-500 break-words">{entry.details}</p>}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

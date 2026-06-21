@@ -19,8 +19,8 @@ const NotFound = lazy(() => import('./routes/NotFound'))
 function PageLoader() {
   return (
     <div className="space-y-4 p-6">
-      <div className="h-8 w-48 animate-pulse rounded bg-gray-800" />
-      <div className="h-64 animate-pulse rounded-lg bg-gray-800" />
+      <div className="h-8 w-48 animate-pulse rounded bg-canvas" />
+      <div className="h-64 animate-pulse rounded-xl bg-canvas" />
     </div>
   )
 }

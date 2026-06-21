@@ -19,13 +19,13 @@ import type { SkillEntry } from '../lib/types'
 
 function SkillNode({ data }: { data: { label: string; hash?: string; latest: string } }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 shadow-lg">
-      <div className="flex h-6 w-6 items-center justify-center rounded bg-brand-600/20 text-brand-400">
+    <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 shadow-soft">
+      <div className="flex h-6 w-6 items-center justify-center rounded border border-line bg-canvas text-ink-2">
         <Package size={12} />
       </div>
       <div>
-        <p className="text-sm font-semibold text-gray-200">{data.label}</p>
-        <p className="text-[10px] text-gray-500">v{data.latest}</p>
+        <p className="text-sm font-semibold text-ink">{data.label}</p>
+        <p className="text-[10px] text-ink-3">v{data.latest}</p>
       </div>
     </div>
   )
@@ -125,17 +125,16 @@ export default function KnowledgeGraph() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Knowledge Graph</h2>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="eyebrow">Explore</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tightish text-ink">Knowledge Graph</h2>
+          <p className="mt-2 text-sm text-ink-2">
             Visualize skill relationships and dependencies
           </p>
         </div>
       </div>
 
-      <div className={`card flex items-center gap-4 ${connected ? 'border-emerald-600/30' : ''}`}>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-          connected ? 'bg-emerald-600/10 text-emerald-400' : 'bg-gray-800 text-gray-500'
-        }`}>
+      <div className={`card flex items-center gap-4 ${connected ? 'border-ink' : ''}`}>
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-canvas text-ink-2">
           {connected ? <Wifi size={20} /> : <WifiOff size={20} />}
         </div>
         <div className="flex items-center gap-3 flex-1">
@@ -160,10 +159,13 @@ export default function KnowledgeGraph() {
           </button>
         </div>
         {connected && (
-          <span className="badge bg-emerald-600/10 text-emerald-400">FalkorDB Connected</span>
+          <span className="badge border border-line bg-canvas text-ink-2">
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-ok" />
+            FalkorDB Connected
+          </span>
         )}
         {!connected && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-ink-3">
             Showing {entries.length} skill{entries.length !== 1 ? 's' : ''} from registry
           </span>
         )}
@@ -172,13 +174,13 @@ export default function KnowledgeGraph() {
       {connected && (
         <>
           <div className="card flex items-center gap-3">
-            <div className="flex gap-1 rounded-lg bg-gray-800 p-0.5">
+            <div className="flex gap-1 rounded-lg border border-line bg-canvas p-0.5">
               <button
                 onClick={() => setQueryMode('capability')}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                   queryMode === 'capability'
-                    ? 'bg-brand-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-surface text-ink shadow-soft'
+                    : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 By Capability
@@ -187,8 +189,8 @@ export default function KnowledgeGraph() {
                 onClick={() => setQueryMode('impact')}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                   queryMode === 'impact'
-                    ? 'bg-brand-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-surface text-ink shadow-soft'
+                    : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 Impact Analysis
@@ -197,8 +199,8 @@ export default function KnowledgeGraph() {
                 onClick={() => setQueryMode('permission')}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                   queryMode === 'permission'
-                    ? 'bg-brand-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-surface text-ink shadow-soft'
+                    : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 By Permission
@@ -224,15 +226,15 @@ export default function KnowledgeGraph() {
 
           {queryResults && (
             <div className="card">
-              <h3 className="mb-3 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              <h3 className="eyebrow mb-3">
                 Query Results ({queryResults.length})
               </h3>
               {queryResults.length === 0 ? (
-                <p className="text-sm text-gray-500">No results found</p>
+                <p className="text-sm text-ink-2">No results found</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {queryResults.map((r, i) => (
-                    <pre key={i} className="rounded bg-gray-800 p-2 text-xs text-gray-300 font-mono overflow-x-auto">
+                    <pre key={i} className="rounded-lg border border-line bg-canvas p-2 text-xs text-ink-2 font-mono overflow-x-auto">
                       {JSON.stringify(r, null, 2)}
                     </pre>
                   ))}
@@ -245,9 +247,9 @@ export default function KnowledgeGraph() {
 
       {entries.length === 0 ? (
         <div className="card py-16 text-center">
-          <Network size={48} className="mx-auto text-gray-700" />
-          <p className="mt-4 text-lg font-medium text-gray-400">No skills to graph</p>
-          <p className="mt-1 text-sm text-gray-500">Publish a skill to see it here</p>
+          <Network size={48} className="mx-auto text-ink-3" />
+          <p className="mt-4 text-lg font-medium text-ink-2">No skills to graph</p>
+          <p className="mt-1 text-sm text-ink-3">Publish a skill to see it here</p>
         </div>
       ) : (
         <div className="card overflow-hidden" style={{ height: 520 }}>
@@ -261,16 +263,16 @@ export default function KnowledgeGraph() {
             minZoom={0.3}
             maxZoom={2}
             defaultEdgeOptions={{
-              style: { stroke: '#334155', strokeWidth: 1.5 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: '#334155' },
+              style: { stroke: '#9A9AA0', strokeWidth: 1.5 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: '#9A9AA0' },
             }}
           >
-            <Controls className="bg-gray-900 border-gray-800 text-gray-400" />
-            <Background color="#1e293b" gap={24} size={1} />
+            <Controls className="border-line bg-surface text-ink-2" />
+            <Background color="#E7E7E3" gap={24} size={1} />
             <MiniMap
-              style={{ background: '#0f172a', border: '1px solid #1e293b' }}
-              nodeColor={() => '#1e293b'}
-              maskColor="rgba(15, 23, 42, 0.8)"
+              style={{ background: '#F6F6F4', border: '1px solid #E7E7E3' }}
+              nodeColor={() => '#E7E7E3'}
+              maskColor="rgba(246, 246, 244, 0.8)"
             />
           </ReactFlow>
         </div>

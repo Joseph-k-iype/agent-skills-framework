@@ -23,8 +23,18 @@ import type { SkillManifest } from '../lib/types'
 import { api } from '../lib/api'
 import { RequirePermission } from '../components/RequireRole'
 import { useAuth } from '../lib/auth'
+import MarkdownEditor from '../components/markdown/MarkdownEditor'
 
-const steps = ['Basic Info', 'Capabilities & Permissions', 'Dependencies & Triggers', 'Review']
+const steps = [
+  'Basic Info',
+  'Capabilities & Permissions',
+  'Dependencies & Triggers',
+  'Documentation',
+  'Review',
+]
+
+const defaultBody = (name: string) =>
+  `# ${name}\n\nAgent instructions for the **${name}** skill.\n\n## Usage\n\nDescribe how agents interact with this skill.\n\n## Examples\n\nProvide example interactions here.\n`
 
 // Mirrors the backend's strict validators (sdks/python/skill_sdk/validation.py):
 // names must be kebab-case starting with a letter, versions must be full SemVer.
@@ -210,9 +220,9 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
       actions={['skill:create']}
       fallback={
         <div className="card py-16 text-center">
-          <Package size={48} className="mx-auto text-gray-700" />
-          <p className="mt-4 text-lg font-medium text-gray-400">Permission Denied</p>
-          <p className="mt-1 text-sm text-gray-500">You need Developer or Admin role to create skills</p>
+          <Package size={48} className="mx-auto text-ink-3" />
+          <p className="mt-4 text-lg font-medium text-ink-2">Permission Denied</p>
+          <p className="mt-1 text-sm text-ink-3">You need Developer or Admin role to create skills</p>
           <Link to="/" className="btn-secondary mt-4 inline-flex"><ArrowLeft size={16} /> Back</Link>
         </div>
       }
@@ -224,8 +234,8 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h2 className="text-2xl font-bold text-gray-100">Create Skill</h2>
-              <p className="mt-1 text-sm text-gray-400">Define a new skill manifest</p>
+              <h2 className="text-3xl font-semibold tracking-tightish text-ink">Create Skill</h2>
+              <p className="mt-1 text-sm text-ink-2">Define a new skill manifest</p>
             </div>
           </div>
         </div>
@@ -233,8 +243,8 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
         <div className="flex gap-1">
           {steps.map((label, i) => (
             <div key={label} className="flex-1">
-              <div className={`h-1 rounded-full transition ${i <= step ? 'bg-brand-600' : 'bg-gray-800'}`} />
-              <p className={`mt-2 text-xs font-medium ${i <= step ? 'text-brand-400' : 'text-gray-600'}`}>
+              <div className={`h-1 rounded-full transition ${i <= step ? 'bg-accent-500' : 'bg-line'}`} />
+              <p className={`mt-2 text-xs font-medium ${i <= step ? 'text-ink' : 'text-ink-3'}`}>
                 {label}
               </p>
             </div>
@@ -243,10 +253,10 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
 
         {step === 0 && (
           <div className="card space-y-4">
-            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Basic Information</h3>
+            <h3 className="eyebrow">Basic Information</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm text-gray-400">Name</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Name</label>
                 <input
                   className="input"
                   placeholder="my-skill"
@@ -254,10 +264,10 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                   onChange={(e) => update('name', e.target.value)}
                   aria-invalid={Boolean(nameError)}
                 />
-                {nameError && <p className="mt-1 text-xs text-red-400">{nameError}</p>}
+                {nameError && <p className="mt-1 text-xs text-bad">{nameError}</p>}
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-gray-400">Version</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Version</label>
                 <input
                   className="input"
                   placeholder="0.1.0"
@@ -265,25 +275,25 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                   onChange={(e) => update('version', e.target.value)}
                   aria-invalid={Boolean(versionError)}
                 />
-                {versionError && <p className="mt-1 text-xs text-red-400">{versionError}</p>}
+                {versionError && <p className="mt-1 text-xs text-bad">{versionError}</p>}
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-gray-400">Runtime</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Runtime</label>
                 <select className="input" value={manifest.runtime} onChange={(e) => update('runtime', e.target.value as 'python' | 'typescript')}>
                   <option value="python">Python</option>
                   <option value="typescript">TypeScript</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-gray-400">API Version</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink">API Version</label>
                 <input type="number" className="input" value={manifest.api_version} onChange={(e) => update('api_version', parseInt(e.target.value) || 1)} />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-sm text-gray-400">Entry Point</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Entry Point</label>
                 <input className="input font-mono" placeholder="src/main.py" value={manifest.entry} onChange={(e) => update('entry', e.target.value)} />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-sm text-gray-400">Description</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink">Description</label>
                 <textarea className="input min-h-[80px] resize-y" placeholder="Optional description" value={manifest.description ?? ''} onChange={(e) => update('description', e.target.value)} />
               </div>
             </div>
@@ -293,19 +303,19 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
         {step === 1 && (
           <div className="space-y-4">
             <div className="card space-y-4">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              <h3 className="eyebrow flex items-center gap-2">
                 <FileKey size={14} /> Capabilities
               </h3>
               <div className="flex gap-2">
                 <input className="input flex-1" placeholder="Add capability..." value={newCapability} onChange={(e) => { setNewCapability(e.target.value); setCapabilityDuplicate(false) }} onKeyDown={(e) => e.key === 'Enter' && addCapability()} />
                 <button onClick={addCapability} className="btn-secondary"><Plus size={16} /> Add</button>
               </div>
-              {capabilityDuplicate && <p className="text-xs text-amber-400">Already added</p>}
+              {capabilityDuplicate && <p className="text-xs text-warn">Already added</p>}
               <div className="flex flex-wrap gap-2">
                 {(manifest.capabilities ?? []).map((c) => (
-                  <span key={c} className="tag bg-brand-600/10 text-brand-400 flex items-center gap-1">
+                  <span key={c} className="tag flex items-center gap-1">
                     {c}
-                    <button onClick={() => update('capabilities', (manifest.capabilities ?? []).filter((x) => x !== c))} className="hover:text-red-400">
+                    <button onClick={() => update('capabilities', (manifest.capabilities ?? []).filter((x) => x !== c))} className="hover:text-bad">
                       <Trash2 size={12} />
                     </button>
                   </span>
@@ -314,7 +324,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             </div>
 
             <div className="card space-y-4">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              <h3 className="eyebrow flex items-center gap-2">
                 <Eye size={14} /> Permissions
               </h3>
               <div className="flex gap-2">
@@ -322,16 +332,16 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                 <input className="input w-36" placeholder="Action (e.g. read)" value={newPermAction} onChange={(e) => { setNewPermAction(e.target.value); setPermissionActionDuplicate(false) }} onKeyDown={(e) => e.key === 'Enter' && addPermission()} />
                 <button onClick={addPermission} className="btn-secondary"><Plus size={16} /> Add</button>
               </div>
-              {permissionActionDuplicate && <p className="text-xs text-amber-400">Already added</p>}
+              {permissionActionDuplicate && <p className="text-xs text-warn">Already added</p>}
               <div className="space-y-2">
                 {(manifest.permissions ?? []).map((p, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 p-2">
-                    <span className="text-sm text-gray-300">{p.resource}</span>
+                  <div key={i} className="flex items-center justify-between rounded-lg border border-line p-2">
+                    <span className="text-sm text-ink-2">{p.resource}</span>
                     <div className="flex items-center gap-2">
                       {p.actions.map((a) => (
-                        <span key={a} className="badge bg-gray-800 text-gray-400">{a}</span>
+                        <span key={a} className="badge border border-line bg-canvas text-ink-2">{a}</span>
                       ))}
-                      <button onClick={() => update('permissions', (manifest.permissions ?? []).filter((_, j) => j !== i))} className="text-gray-600 hover:text-red-400">
+                      <button onClick={() => update('permissions', (manifest.permissions ?? []).filter((_, j) => j !== i))} className="text-ink-3 hover:text-bad">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -345,51 +355,51 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
         {step === 2 && (
           <div className="space-y-4">
             <div className="card space-y-4">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              <h3 className="eyebrow flex items-center gap-2">
                 <GitBranch size={14} /> Dependencies
               </h3>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">Python (pip)</label>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-2">Python (pip)</label>
                   <div className="flex gap-2">
                     <input className="input flex-1" placeholder="requests>=2.0" value={pipDep} onChange={(e) => setPipDep(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addDependency('pip', pipDep)} />
                     <button onClick={() => addDependency('pip', pipDep)} className="btn-ghost p-2"><Plus size={14} /></button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(manifest.dependencies?.pip ?? []).map((d) => (
-                      <span key={d} className="tag bg-gray-800 text-gray-300 flex items-center gap-1">
+                      <span key={d} className="tag flex items-center gap-1">
                         {d}
-                        <button onClick={() => update('dependencies', { ...manifest.dependencies, pip: (manifest.dependencies?.pip ?? []).filter((x) => x !== d) })} className="hover:text-red-400"><Trash2 size={10} /></button>
+                        <button onClick={() => update('dependencies', { ...manifest.dependencies, pip: (manifest.dependencies?.pip ?? []).filter((x) => x !== d) })} className="hover:text-bad"><Trash2 size={10} /></button>
                       </span>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">Node.js (npm)</label>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-2">Node.js (npm)</label>
                   <div className="flex gap-2">
                     <input className="input flex-1" placeholder="lodash" value={npmDep} onChange={(e) => setNpmDep(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addDependency('npm', npmDep)} />
                     <button onClick={() => addDependency('npm', npmDep)} className="btn-ghost p-2"><Plus size={14} /></button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(manifest.dependencies?.npm ?? []).map((d) => (
-                      <span key={d} className="tag bg-gray-800 text-gray-300 flex items-center gap-1">
+                      <span key={d} className="tag flex items-center gap-1">
                         {d}
-                        <button onClick={() => update('dependencies', { ...manifest.dependencies, npm: (manifest.dependencies?.npm ?? []).filter((x) => x !== d) })} className="hover:text-red-400"><Trash2 size={10} /></button>
+                        <button onClick={() => update('dependencies', { ...manifest.dependencies, npm: (manifest.dependencies?.npm ?? []).filter((x) => x !== d) })} className="hover:text-bad"><Trash2 size={10} /></button>
                       </span>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">Skills</label>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-2">Skills</label>
                   <div className="flex gap-2">
                     <input className="input flex-1" placeholder="data-quality@1.0" value={skillDep} onChange={(e) => setSkillDep(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addDependency('skills', skillDep)} />
                     <button onClick={() => addDependency('skills', skillDep)} className="btn-ghost p-2"><Plus size={14} /></button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(manifest.dependencies?.skills ?? []).map((d) => (
-                      <span key={d} className="tag bg-brand-600/10 text-brand-400 flex items-center gap-1">
+                      <span key={d} className="tag flex items-center gap-1">
                         {d}
-                        <button onClick={() => update('dependencies', { ...manifest.dependencies, skills: (manifest.dependencies?.skills ?? []).filter((x) => x !== d) })} className="hover:text-red-400"><Trash2 size={10} /></button>
+                        <button onClick={() => update('dependencies', { ...manifest.dependencies, skills: (manifest.dependencies?.skills ?? []).filter((x) => x !== d) })} className="hover:text-bad"><Trash2 size={10} /></button>
                       </span>
                     ))}
                   </div>
@@ -398,44 +408,44 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             </div>
 
             <div className="card space-y-4">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              <h3 className="eyebrow flex items-center gap-2">
                 <Code size={14} /> Triggers
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">Events</label>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-2">Events</label>
                   <div className="flex gap-2">
                     <input className="input flex-1" placeholder="schema.updated" value={eventTrigger} onChange={(e) => setEventTrigger(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTrigger('events', eventTrigger)} />
                     <button onClick={() => addTrigger('events', eventTrigger)} className="btn-ghost p-2"><Plus size={14} /></button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(manifest.triggers?.events ?? []).map((e) => (
-                      <span key={e} className="tag bg-gray-800 text-gray-300 flex items-center gap-1">
+                      <span key={e} className="tag flex items-center gap-1">
                         {e}
                         <button onClick={() => {
                           const t = { ...manifest.triggers }
                           t.events = (t.events ?? []).filter((x) => x !== e)
                           update('triggers', t)
-                        }} className="hover:text-red-400"><Trash2 size={10} /></button>
+                        }} className="hover:text-bad"><Trash2 size={10} /></button>
                       </span>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">Commands</label>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-2">Commands</label>
                   <div className="flex gap-2">
                     <input className="input flex-1" placeholder="discover" value={commandTrigger} onChange={(e) => setCommandTrigger(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTrigger('commands', commandTrigger)} />
                     <button onClick={() => addTrigger('commands', commandTrigger)} className="btn-ghost p-2"><Plus size={14} /></button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(manifest.triggers?.commands ?? []).map((c) => (
-                      <span key={c} className="tag bg-gray-800 text-gray-300 flex items-center gap-1">
+                      <span key={c} className="tag flex items-center gap-1">
                         {c}
                         <button onClick={() => {
                           const t = { ...manifest.triggers }
                           t.commands = (t.commands ?? []).filter((x) => x !== c)
                           update('triggers', t)
-                        }} className="hover:text-red-400"><Trash2 size={10} /></button>
+                        }} className="hover:text-bad"><Trash2 size={10} /></button>
                       </span>
                     ))}
                   </div>
@@ -448,19 +458,19 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
         {step === 3 && (
           <div className="card space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              <h3 className="eyebrow flex items-center gap-2">
                 <FileKey size={14} /> Review Manifest
               </h3>
               <button onClick={handleDownload} className="btn-primary">
                 <Download size={16} /> Download SKILL.md
               </button>
             </div>
-            <div className="overflow-hidden rounded-lg border border-gray-800">
+            <div className="overflow-hidden rounded-lg border border-line">
               <Editor
                 height="400px"
                 defaultLanguage="yaml"
                 value={yamlContent}
-                theme="vs-dark"
+                theme="light"
                 options={{
                   readOnly: true,
                   minimap: { enabled: false },
@@ -471,12 +481,12 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                 }}
               />
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-gray-800/60 p-3 text-sm text-gray-400">
-              <Check size={16} className="text-emerald-400" />
+            <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-ink-2">
+              <Check size={16} className="text-ok" />
               Manifest is ready. Download it, or scaffold it directly into the server workspace.
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-800 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
               <button
                 onClick={() => scaffoldMutation.mutate(false)}
                 disabled={scaffoldMutation.isPending || hasBasicInfoErrors}
@@ -496,7 +506,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             </div>
 
             {scaffoldMutation.isError && (
-              <div className="flex items-start gap-2 rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+              <div className="flex items-start gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-bad">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span className="break-words">
                   {scaffoldMutation.error instanceof Error ? scaffoldMutation.error.message : 'Request failed'}
@@ -505,7 +515,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             )}
 
             {scaffoldResult && !scaffoldResult.success && scaffoldResult.errors?.length ? (
-              <div className="rounded-lg bg-red-600/10 p-3 text-sm text-red-400">
+              <div className="rounded-lg border border-line bg-canvas p-3 text-sm text-bad">
                 <p className="flex items-center gap-2 font-medium"><AlertCircle size={16} /> Validation failed</p>
                 <ul className="mt-2 list-disc space-y-1 pl-6 text-xs">
                   {scaffoldResult.errors.map((err, i) => (
@@ -516,13 +526,13 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             ) : null}
 
             {scaffoldResult?.success && (
-              <div className="rounded-lg bg-emerald-600/10 p-3 text-sm text-emerald-400">
+              <div className="rounded-lg border border-line bg-canvas p-3 text-sm text-ok">
                 <p className="flex items-center gap-2 font-medium">
                   <CheckCircle2 size={16} />
                   {scaffoldResult.published ? 'Scaffolded and published' : 'Scaffolded'}
                 </p>
                 {scaffoldResult.path && (
-                  <p className="mt-1 font-mono text-xs text-emerald-500/80 break-all">{scaffoldResult.path}</p>
+                  <p className="mt-1 font-mono text-xs text-ink-3 break-all">{scaffoldResult.path}</p>
                 )}
                 {scaffoldResult.published && (
                   <button onClick={() => navigate(`/skills/${manifest.name}`)} className="btn-ghost mt-2 text-xs">

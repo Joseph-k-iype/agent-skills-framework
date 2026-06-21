@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Package, GitBranch, Database, Layers, Plus, Search } from 'lucide-react'
+import { Package, Database, Plus, Search, ArrowUpRight } from 'lucide-react'
 import { api } from '../lib/api'
 import { pluralize, shortHash } from '../lib/utils'
 
@@ -16,14 +16,24 @@ export default function Dashboard() {
         .slice(0, 5)
     : []
 
+  const metrics = [
+    {
+      label: 'Total Skills',
+      value: isLoading ? '—' : stats?.total_skills ?? 0,
+      headline: true,
+    },
+    { label: 'Versions', value: isLoading ? '—' : stats?.total_versions ?? 0 },
+    { label: 'Sources', value: isLoading ? '—' : stats?.sources_count ?? 0 },
+    { label: 'Registry', value: isLoading ? '—' : 'Active' },
+  ]
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-10">
+      <div className="flex items-end justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Dashboard</h2>
-          <p className="mt-1 text-sm text-gray-400">
-            Overview of the Agent Skills Framework
-          </p>
+          <p className="eyebrow">Overview</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tightish text-ink">Dashboard</h2>
+          <p className="mt-2 text-sm text-ink-2">The state of your Agent Skills Framework.</p>
         </div>
         <div className="flex gap-3">
           <Link to="/skills" className="btn-secondary">
@@ -37,139 +47,120 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          {
-            label: 'Total Skills',
-            value: isLoading ? '...' : stats?.total_skills ?? 0,
-            icon: Package,
-            color: 'text-brand-400 bg-brand-600/10',
-          },
-          {
-            label: 'Versions',
-            value: isLoading ? '...' : stats?.total_versions ?? 0,
-            icon: Layers,
-            color: 'text-emerald-400 bg-emerald-600/10',
-          },
-          {
-            label: 'Sources',
-            value: isLoading ? '...' : stats?.sources_count ?? 0,
-            icon: Database,
-            color: 'text-amber-400 bg-amber-600/10',
-          },
-          {
-            label: 'Registry',
-            value: isLoading ? '...' : 'Active',
-            icon: GitBranch,
-            color: 'text-rose-400 bg-rose-600/10',
-          },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="card">
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
-                <Icon size={20} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">{label}</p>
-                <p className="text-2xl font-bold text-gray-100">{value}</p>
-              </div>
-            </div>
+      {/* Metrics — monochrome, big numerals, red reserved for the headline figure */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line lg:grid-cols-4">
+        {metrics.map(({ label, value, headline }) => (
+          <div key={label} className="bg-surface px-5 py-6">
+            <p className="eyebrow">{label}</p>
+            <p
+              className={`mt-3 text-4xl font-light tabular-nums tracking-tightish ${
+                headline ? 'text-accent-500' : 'text-ink'
+              }`}
+            >
+              {value}
+            </p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card">
-          <h3 className="mb-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            Recent Skills
-          </h3>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded bg-gray-800" />
-              ))}
-            </div>
-          ) : recentSkills.length === 0 ? (
-            <div className="py-8 text-center">
-              <Package size={32} className="mx-auto text-gray-600" />
-              <p className="mt-2 text-sm text-gray-500">No skills published yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {recentSkills.map(([name, info]) => {
-                const skillId = info.ids?.[info.latest]
-                return (
-                  <Link
-                    key={name}
-                    to={`/skills/${name}`}
-                    className="card-hover flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded bg-brand-600/20 text-brand-400">
-                        <Package size={16} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-200">{name}</p>
-                        <p className="text-xs text-gray-500">
-                          v{info.latest} · {pluralize(info.versions?.length ?? 1, 'version')}
-                        </p>
-                      </div>
-                    </div>
-                    {skillId && (
-                      <span className="text-xs text-gray-600 font-mono">
-                        {shortHash(skillId)}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <h3 className="mb-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            Quick Actions
-          </h3>
-          <div className="space-y-3">
-            <Link
-              to="/skills/new"
-              className="card-hover flex items-center gap-4"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600/10 text-brand-400">
-                <Plus size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Create a Skill</p>
-                <p className="text-xs text-gray-500">Scaffold a new skill project</p>
-              </div>
-            </Link>
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="eyebrow">Recent Skills</h3>
             <Link
               to="/skills"
-              className="card-hover flex items-center gap-4"
+              className="inline-flex items-center gap-1 text-xs font-medium text-ink-2 transition hover:text-ink"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600/10 text-emerald-400">
-                <Search size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Browse Catalog</p>
-                <p className="text-xs text-gray-500">Discover and install skills</p>
-              </div>
-            </Link>
-            <Link
-              to="/graph"
-              className="card-hover flex items-center gap-4"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-600/10 text-amber-400">
-                <Database size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Knowledge Graph</p>
-                <p className="text-xs text-gray-500">Explore skill dependencies</p>
-              </div>
+              View all <ArrowUpRight size={13} />
             </Link>
           </div>
-        </div>
+          <div className="card p-0">
+            {isLoading ? (
+              <div className="divide-y divide-line">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-[60px] animate-pulse bg-canvas" />
+                ))}
+              </div>
+            ) : recentSkills.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <Package size={28} className="mx-auto text-ink-3" />
+                <p className="mt-3 text-sm text-ink-2">No skills published yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-line">
+                {recentSkills.map(([name, info]) => {
+                  const skillId = info.ids?.[info.latest]
+                  return (
+                    <Link
+                      key={name}
+                      to={`/skills/${name}`}
+                      className="group flex items-center justify-between px-5 py-3.5 transition hover:bg-canvas"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-canvas text-ink-2 transition group-hover:text-ink">
+                          <Package size={15} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-ink">{name}</p>
+                          <p className="text-xs text-ink-3">
+                            v{info.latest} · {pluralize(info.versions?.length ?? 1, 'version')}
+                          </p>
+                        </div>
+                      </div>
+                      {skillId && (
+                        <span className="font-mono text-xs text-ink-3">{shortHash(skillId)}</span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <h3 className="eyebrow mb-4">Quick Actions</h3>
+          <div className="card space-y-1 p-2">
+            {[
+              {
+                to: '/skills/new',
+                title: 'Create a Skill',
+                desc: 'Scaffold a new skill project',
+                icon: Plus,
+              },
+              {
+                to: '/skills',
+                title: 'Browse Catalog',
+                desc: 'Discover and install skills',
+                icon: Search,
+              },
+              {
+                to: '/graph',
+                title: 'Knowledge Graph',
+                desc: 'Explore skill dependencies',
+                icon: Database,
+              },
+            ].map(({ to, title, desc, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="group flex items-center gap-4 rounded-lg px-3 py-3 transition hover:bg-canvas"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink-2 transition group-hover:border-accent-200 group-hover:text-accent-500">
+                  <Icon size={17} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-ink">{title}</p>
+                  <p className="text-xs text-ink-3">{desc}</p>
+                </div>
+                <ArrowUpRight
+                  size={15}
+                  className="text-ink-3 opacity-0 transition group-hover:opacity-100"
+                />
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )

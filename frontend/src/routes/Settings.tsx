@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Settings as SettingsIcon, Folder, GitBranch, Database, Shield, Info, FileJson, User } from 'lucide-react'
+import { Folder, GitBranch, Database, Shield, Info, User } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth, roleOptions } from '../lib/auth'
 
@@ -19,8 +19,9 @@ export default function Settings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Settings</h2>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="eyebrow">Configuration</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tightish text-ink">Settings</h2>
+          <p className="mt-2 text-sm text-ink-2">
             Framework configuration and preferences
           </p>
         </div>
@@ -28,10 +29,10 @@ export default function Settings() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <Info size={14} /> Framework
           </h3>
-          <div className="space-y-3">
+          <div className="divide-y divide-line">
             {[
               { label: 'Version', value: '0.1.0' },
               { label: 'API Version', value: '1' },
@@ -39,36 +40,38 @@ export default function Settings() {
               { label: 'Skills', value: String(info?.skill_count ?? 0) },
               { label: 'Sources', value: String(info?.sources?.length ?? 0) },
             ].map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
-                <span className="text-sm text-gray-400">{label}</span>
-                <span className="text-sm font-medium text-gray-200">{value}</span>
+              <div key={label} className="flex items-center justify-between py-3">
+                <span className="text-sm text-ink-3">{label}</span>
+                <span className="text-sm font-medium text-ink">{value}</span>
               </div>
             ))}
           </div>
         </div>
 
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <Database size={14} /> Registry
           </h3>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-gray-800 p-3">
-              <p className="text-sm text-gray-400">Index File</p>
-              <p className="mt-1 text-sm font-mono text-gray-200">index.yaml</p>
+          <div className="divide-y divide-line">
+            <div className="py-3">
+              <p className="text-sm text-ink-3">Index File</p>
+              <p className="mt-1 text-sm font-mono text-ink">index.yaml</p>
             </div>
-            <div className="rounded-lg border border-gray-800 p-3">
-              <p className="text-sm text-gray-400">Workspace</p>
-              <p className="mt-1 text-sm font-mono text-gray-200 break-all">{info?.workspace ?? '...'}</p>
+            <div className="py-3">
+              <p className="text-sm text-ink-3">Workspace</p>
+              <p className="mt-1 text-sm font-mono text-ink break-all">{info?.workspace ?? '...'}</p>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
-              <span className="text-sm text-gray-400">Auto-tag on Publish</span>
-              <span className={`badge ${info?.auto_tag ? 'bg-emerald-600/10 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-sm text-ink-3">Auto-tag on Publish</span>
+              <span className="badge gap-1.5 border border-line bg-canvas text-ink-2">
+                <span className={`h-1.5 w-1.5 rounded-full ${info?.auto_tag ? 'bg-ok' : 'bg-ink-3'}`} />
                 {info ? (info.auto_tag ? 'Enabled' : 'Disabled') : '...'}
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
-              <span className="text-sm text-gray-400">API Authentication</span>
-              <span className={`badge ${info?.auth_required ? 'bg-emerald-600/10 text-emerald-400' : 'bg-amber-600/10 text-amber-400'}`}>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-sm text-ink-3">API Authentication</span>
+              <span className="badge gap-1.5 border border-line bg-canvas text-ink-2">
+                <span className={`h-1.5 w-1.5 rounded-full ${info?.auth_required ? 'bg-ok' : 'bg-warn'}`} />
                 {info ? (info.auth_required ? 'Required' : 'Open (dev)') : '...'}
               </span>
             </div>
@@ -76,30 +79,30 @@ export default function Settings() {
         </div>
 
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <GitBranch size={14} /> Sources
           </h3>
           {!sources?.length ? (
             <div className="py-8 text-center">
-              <Folder size={32} className="mx-auto text-gray-600" />
-              <p className="mt-2 text-sm text-gray-500">No sources configured</p>
+              <Folder size={32} className="mx-auto text-ink-3" />
+              <p className="mt-2 text-sm text-ink-2">No sources configured</p>
             </div>
           ) : (
             <div className="space-y-2">
               {sources.map((source, i) => (
-                <div key={i} className="rounded-lg border border-gray-800 p-3">
+                <div key={i} className="rounded-lg border border-line p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {source.type === 'git' ? (
-                        <GitBranch size={14} className="text-amber-400" />
+                        <GitBranch size={14} className="text-ink-2" />
                       ) : (
-                        <Folder size={14} className="text-brand-400" />
+                        <Folder size={14} className="text-ink-2" />
                       )}
-                      <span className="text-sm font-medium text-gray-200 capitalize">{source.type}</span>
+                      <span className="text-sm font-medium text-ink capitalize">{source.type}</span>
                     </div>
-                    <span className="badge bg-gray-800 text-gray-400">{source.type === 'git' ? source.ref : 'local'}</span>
+                    <span className="badge border border-line bg-canvas text-ink-2">{source.type === 'git' ? source.ref : 'local'}</span>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500 font-mono">{source.url || source.path}</p>
+                  <p className="mt-1 text-xs text-ink-3 font-mono">{source.url || source.path}</p>
                 </div>
               ))}
             </div>
@@ -107,30 +110,33 @@ export default function Settings() {
         </div>
 
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <Shield size={14} /> Governance
           </h3>
-          <div className="space-y-3">
+          <div className="divide-y divide-line">
             {[
               { label: 'Require Hash Verification', value: 'Enabled' },
               { label: 'Enforce Valid Manifests', value: 'Enabled' },
               { label: 'Dependency Cycle Detection', value: 'Enabled' },
               { label: 'Permission Validation', value: 'Enabled' },
             ].map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between rounded-lg border border-gray-800 p-3">
-                <span className="text-sm text-gray-400">{label}</span>
-                <span className="badge bg-emerald-600/10 text-emerald-400">{value}</span>
+              <div key={label} className="flex items-center justify-between py-3">
+                <span className="text-sm text-ink-3">{label}</span>
+                <span className="badge gap-1.5 border border-line bg-canvas text-ink-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-ok" />
+                  {value}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
         <div className="card">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          <h3 className="eyebrow mb-4 flex items-center gap-2">
             <User size={14} /> User Role
           </h3>
-          <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-600/10 p-3 text-xs text-amber-400">
-            <Shield size={14} className="mt-0.5 shrink-0" />
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-line bg-canvas p-3 text-xs text-ink-2">
+            <Shield size={14} className="mt-0.5 shrink-0 text-ink-3" />
             <span>
               Client-side preview only. This switches which UI is permission-gated; it is
               <strong> not</strong> an authorization boundary. Real authz is enforced server-side
@@ -143,8 +149,8 @@ export default function Settings() {
                 key={opt.value}
                 className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition ${
                   role === opt.value
-                    ? 'border-brand-600/50 bg-brand-600/5'
-                    : 'border-gray-800 hover:bg-gray-800/50'
+                    ? 'border-accent-300 bg-accent-50'
+                    : 'border-line hover:bg-canvas'
                 }`}
               >
                 <input
@@ -153,11 +159,11 @@ export default function Settings() {
                   value={opt.value}
                   checked={role === opt.value}
                   onChange={() => setRole(opt.value)}
-                  className="h-4 w-4 border-gray-600 text-brand-600"
+                  className="h-4 w-4 border-line text-accent-500 focus:ring-accent-500/15"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-200">{opt.label}</p>
-                  <p className="text-xs text-gray-500">{opt.description}</p>
+                  <p className="text-sm font-medium text-ink">{opt.label}</p>
+                  <p className="text-xs text-ink-3">{opt.description}</p>
                 </div>
               </label>
             ))}

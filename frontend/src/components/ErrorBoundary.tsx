@@ -26,12 +26,12 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="card mx-auto mt-10 max-w-lg text-center">
-          <AlertTriangle size={40} className="mx-auto text-amber-400" />
-          <h2 className="mt-4 text-lg font-semibold text-gray-100">Something went wrong</h2>
-          <p className="mt-1 text-sm text-gray-400">
+          <AlertTriangle size={40} className="mx-auto text-bad" />
+          <h2 className="mt-4 text-lg font-semibold text-ink">Something went wrong</h2>
+          <p className="mt-1 text-sm text-ink-2">
             This page hit an unexpected error. You can retry or navigate elsewhere.
           </p>
-          <pre className="mt-3 overflow-x-auto rounded bg-gray-900 p-3 text-left text-xs text-red-400">
+          <pre className="mt-3 overflow-x-auto rounded-lg border border-line bg-canvas p-3 text-left text-xs font-mono text-bad">
             {this.state.error.message}
           </pre>
           <div className="mt-4 flex justify-center gap-3">

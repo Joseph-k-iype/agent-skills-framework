@@ -163,6 +163,55 @@ def get_skill_doc(name: str, format: str = "markdown", registry: RegistryClient 
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class UpdateDocRequest(BaseModel):
+    body: str
+
+
+@router.put("/{name}/doc", dependencies=[Depends(require_api_key)])
+def update_skill_doc(
+    name: str, req: UpdateDocRequest, registry: RegistryClient = Depends(get_registry)
+):
+    """Replace the Markdown body of a skill's SKILL.md, preserving frontmatter.
+
+    The body is not part of the content hash (see iter_source_files, which excludes
+    manifests), so editing it leaves the skill's id and registry.verify() intact.
+    Edits the registry's served copy; a later sync_from_sources may overwrite it.
+    """
+    skill_dir = _skill_dir_or_404(name, registry)
+    manifest_path = _manifest_path(skill_dir)
+    if not manifest_path:
+        raise HTTPException(status_code=404, detail="Manifest not found")
+    if manifest_path.name != "SKILL.md":
+        raise HTTPException(
+            status_code=400, detail="Documentation editing requires SKILL.md format"
+        )
+
+    raw = manifest_path.read_text(encoding="utf-8")
+    # Locate the frontmatter block exactly as _parse_frontmatter does: the closing
+    # delimiter is the first line equal to "---" after the opening one. Splicing the
+    # raw frontmatter back (rather than re-dumping the parsed YAML) preserves field
+    # order, comments, and formatting verbatim.
+    stripped = raw.lstrip("﻿").lstrip("\n")
+    if not stripped.startswith("---"):
+        raise HTTPException(status_code=400, detail="Invalid SKILL.md: no frontmatter")
+    lines = stripped[3:].split("\n")
+    end_line = next((i for i, ln in enumerate(lines) if ln.rstrip() == "---"), None)
+    if end_line is None:
+        raise HTTPException(status_code=400, detail="Invalid SKILL.md: unterminated frontmatter")
+
+    frontmatter = "---" + "\n".join(lines[: end_line + 1])
+    new_body = req.body.strip()
+    text = f"{frontmatter}\n\n{new_body}\n" if new_body else f"{frontmatter}\n"
+    manifest_path.write_text(text, encoding="utf-8")
+
+    try:
+        version = registry.info(name).get("latest")
+    except Exception:
+        version = None
+    audit.record("Skill Docs Updated", name, version, details="Documentation body updated")
+    return {"body": new_body, "name": name}
+
+
 @router.get("/{name}/versions")
 def get_skill_versions(name: str, registry: RegistryClient = Depends(get_registry)):
     try:

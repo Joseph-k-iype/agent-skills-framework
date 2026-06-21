@@ -66,8 +66,9 @@ export default function Registry() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Registry</h2>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="eyebrow">Overview</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tightish text-ink">Registry</h2>
+          <p className="mt-2 text-sm text-ink-2">
             Manage skill registry and sources
           </p>
         </div>
@@ -91,8 +92,8 @@ export default function Registry() {
 
       {showAddSource && (
         <RequirePermission actions={['registry:manage']}>
-        <div className="card border-brand-600/30">
-          <h3 className="mb-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+        <div className="card">
+          <h3 className="eyebrow mb-4">
             Add Registry Source
           </h3>
           <form onSubmit={handleAddSource} className="space-y-4">
@@ -100,14 +101,14 @@ export default function Registry() {
               <button
                 type="button"
                 onClick={() => setSourceType('git')}
-                className={`btn-ghost flex-1 ${sourceType === 'git' ? 'text-brand-400 bg-brand-600/10' : ''}`}
+                className={`btn-ghost flex-1 ${sourceType === 'git' ? 'text-accent-500 bg-canvas' : ''}`}
               >
                 <GitBranch size={16} /> Git Repository
               </button>
               <button
                 type="button"
                 onClick={() => setSourceType('local')}
-                className={`btn-ghost flex-1 ${sourceType === 'local' ? 'text-brand-400 bg-brand-600/10' : ''}`}
+                className={`btn-ghost flex-1 ${sourceType === 'local' ? 'text-accent-500 bg-canvas' : ''}`}
               >
                 <Folder size={16} /> Local Directory
               </button>
@@ -149,10 +150,14 @@ export default function Registry() {
               </button>
             </div>
             {addSourceMutation.isError && (
-              <p className="text-sm text-red-400">Failed to add source</p>
+              <p className="flex items-center gap-1.5 text-sm text-ink-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-bad" /> Failed to add source
+              </p>
             )}
             {addSourceMutation.isSuccess && (
-              <p className="text-sm text-emerald-400">Source added successfully</p>
+              <p className="flex items-center gap-1.5 text-sm text-ink-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-ok" /> Source added successfully
+              </p>
             )}
           </form>
         </div>
@@ -161,77 +166,72 @@ export default function Registry() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: 'Schema Version', value: info?.schema_version ?? '...', icon: Database, color: 'text-brand-400 bg-brand-600/10' },
-          { label: 'Skills', value: info?.skill_count ?? '...', icon: Package, color: 'text-emerald-400 bg-emerald-600/10' },
-          { label: 'Sources', value: info?.sources?.length ?? '...', icon: GitBranch, color: 'text-amber-400 bg-amber-600/10' },
-        ].map(({ label, value, icon: Icon, color }) => (
+          { label: 'Schema Version', value: info?.schema_version ?? '...', icon: Database },
+          { label: 'Skills', value: info?.skill_count ?? '...', icon: Package },
+          { label: 'Sources', value: info?.sources?.length ?? '...', icon: GitBranch },
+        ].map(({ label, value, icon: Icon }) => (
           <div key={label} className="card">
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-canvas text-ink-2">
                 <Icon size={20} />
               </div>
               <div>
-                <p className="text-sm text-gray-400">{label}</p>
-                <p className="text-2xl font-bold text-gray-100">{value}</p>
+                <p className="eyebrow">{label}</p>
+                <p className="mt-1 text-2xl font-light tabular-nums tracking-tightish text-ink">{value}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="card">
-        <h3 className="mb-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
-          Registry Sources
-        </h3>
-        {sourcesLoading ? (
-          <div className="space-y-2">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded bg-gray-800" />
-            ))}
-          </div>
-        ) : !sources?.length ? (
-          <div className="py-8 text-center">
-            <Database size={32} className="mx-auto text-gray-600" />
-            <p className="mt-2 text-sm text-gray-500">No sources configured</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {sources.map((source, i) => (
-              <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 p-3">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded ${
-                    source.type === 'git' ? 'bg-amber-600/20 text-amber-400' : 'bg-brand-600/20 text-brand-400'
-                  }`}>
-                    {source.type === 'git' ? <GitBranch size={14} /> : <Folder size={14} />}
+      <section>
+        <h3 className="eyebrow mb-4">Registry Sources</h3>
+        <div className="card p-0">
+          {sourcesLoading ? (
+            <div className="divide-y divide-line">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="h-16 animate-pulse bg-canvas" />
+              ))}
+            </div>
+          ) : !sources?.length ? (
+            <div className="px-5 py-12 text-center">
+              <Database size={28} className="mx-auto text-ink-3" />
+              <p className="mt-3 text-sm text-ink-2">No sources configured</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-line">
+              {sources.map((source, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-canvas text-ink-2">
+                      {source.type === 'git' ? <GitBranch size={14} /> : <Folder size={14} />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-ink capitalize">{source.type} source</p>
+                      <p className="font-mono text-xs text-ink-3">
+                        {source.url || source.path || 'No path specified'}
+                        {source.ref && ` @ ${source.ref}`}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-200 capitalize">{source.type} source</p>
-                    <p className="text-xs text-gray-500">
-                      {source.url || source.path || 'No path specified'}
-                      {source.ref && ` @ ${source.ref}`}
-                    </p>
-                  </div>
+                  <span className="tag">{source.type}</span>
                 </div>
-                <span className={`badge ${
-                  source.type === 'git' ? 'bg-amber-600/10 text-amber-400' : 'bg-brand-600/10 text-brand-400'
-                }`}>
-                  {source.type}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {syncMutation.data && (
-        <div className={`card ${syncMutation.data.errors?.length ? 'border-amber-600/30' : 'border-emerald-600/30'}`}>
-          <p className={`text-sm ${syncMutation.data.errors?.length ? 'text-amber-400' : 'text-emerald-400'}`}>
+        <div className="card">
+          <p className="flex items-center gap-1.5 text-sm text-ink">
+            <span className={`h-1.5 w-1.5 rounded-full ${syncMutation.data.errors?.length ? 'bg-warn' : 'bg-ok'}`} />
             Synced {syncMutation.data.synced} {syncMutation.data.synced === 1 ? 'skill' : 'skills'} from{' '}
             {sources?.length ?? 0} {(sources?.length ?? 0) === 1 ? 'source' : 'sources'}
           </p>
           {syncMutation.data.errors?.map((err, i) => (
-            <p key={i} className="mt-1 flex items-center gap-1.5 text-xs text-amber-400">
-              <AlertCircle size={12} /> {err}
+            <p key={i} className="mt-1 flex items-center gap-1.5 text-xs text-ink-2">
+              <AlertCircle size={12} className="text-ink-3" /> {err}
             </p>
           ))}
         </div>

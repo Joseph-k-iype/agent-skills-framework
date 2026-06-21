@@ -47,6 +47,11 @@ export const api = {
     detail: (name: string) => fetchJSON<import('./types').SkillEntry & { name: string }>(`/skills/${encodeURIComponent(name)}`),
     manifest: (name: string) => fetchJSON<import('./types').ManifestResponse>(`/skills/${encodeURIComponent(name)}/manifest`),
     doc: (name: string, format = 'markdown') => fetchJSON<import('./types').DocResult>(`/skills/${encodeURIComponent(name)}/doc?format=${format}`),
+    updateDoc: (name: string, body: string) =>
+      fetchJSON<{ body: string; name: string }>(`/skills/${encodeURIComponent(name)}/doc`, {
+        method: 'PUT',
+        body: JSON.stringify({ body }),
+      }),
     versions: (name: string) => fetchJSON<{ name: string; versions: string[]; latest: string; ids: Record<string, string> }>(`/skills/${encodeURIComponent(name)}/versions`),
     validate: (name: string) => fetchJSON<import('./types').ValidationResult>(`/skills/${encodeURIComponent(name)}/validate`, { method: 'POST' }),
     verify: (name: string, version?: string) => {

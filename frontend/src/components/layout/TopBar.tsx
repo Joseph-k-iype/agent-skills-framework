@@ -30,27 +30,24 @@ export default function TopBar() {
   }
 
   return (
-    <header className="flex h-16 items-center gap-4 border-b border-gray-800 bg-gray-950 px-6">
-      <h1 className="text-lg font-semibold text-gray-100">{label}</h1>
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-line bg-surface/80 px-8 backdrop-blur-md">
+      <h1 className="text-lg font-semibold tracking-tightish text-ink">{label}</h1>
 
       <div className="flex-1" />
 
       <form onSubmit={handleSearch} className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
         <input
           type="text"
           placeholder="Search skills..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="input w-72 pl-9"
+          className="input w-72 rounded-full pl-9"
         />
       </form>
 
       <RequirePermission actions={['skill:create']}>
-        <button
-          onClick={() => navigate('/skills/new')}
-          className="btn-primary"
-        >
+        <button onClick={() => navigate('/skills/new')} className="btn-primary">
           <Plus size={16} />
           New Skill
         </button>
