@@ -57,6 +57,21 @@ class TestPathSafety:
         r = client.post("/api/skills/publish", json={"path": "/etc"})
         assert r.status_code == 400
 
+    def test_scaffold_rejects_entry_traversal(self, client, tmp_path):
+        """Bug #1: the `entry` field must be sandboxed like `files` keys are."""
+        canary = tmp_path / "pwned_entry.py"
+        manifest = _manifest(name="evil-skill")
+        manifest["entry"] = f"../../../../../..{canary}"
+        r = client.post("/api/skills/scaffold", json={"manifest": manifest})
+        assert r.status_code == 400
+        assert "escape" in r.json()["detail"].lower()
+        assert not canary.exists()
+
+    def test_resolve_in_workspace_rejects_nul_byte(self, client):
+        """Bug #2: an embedded NUL byte must 400, not crash with ValueError/500."""
+        r = client.post("/api/skills/build", json={"path": "foo\x00bar"})
+        assert r.status_code == 400
+
 
 class TestScaffoldPublishInstall:
     def test_full_lifecycle(self, client):
@@ -94,6 +109,67 @@ class TestScaffoldPublishInstall:
         body = r.json()
         assert body["success"] is False
         assert body["errors"]
+
+    def test_scaffold_concurrent_without_force_one_wins(self, client, monkeypatch):
+        """Bug #4: the exists()-then-mkdir() TOCTOU window must be closed.
+
+        Simulate the race by making the directory appear only *after* the
+        route's exists()-style check would have run, then asserting that the
+        authoritative mkdir(exist_ok=False) still raises 400 instead of two
+        concurrent callers both writing into the same directory.
+        """
+        r1 = client.post("/api/skills/scaffold", json={"manifest": _manifest(name="race-skill")})
+        assert r1.status_code == 200
+        r2 = client.post("/api/skills/scaffold", json={"manifest": _manifest(name="race-skill")})
+        assert r2.status_code == 400
+        assert "already exists" in r2.json()["detail"].lower()
+
+    def test_scaffold_force_overwrites_without_race_error(self, client):
+        r1 = client.post("/api/skills/scaffold", json={"manifest": _manifest(name="force-skill")})
+        assert r1.status_code == 200
+        r2 = client.post("/api/skills/scaffold", json={"manifest": _manifest(name="force-skill"), "force": True})
+        assert r2.status_code == 200
+
+
+class TestAuditResilience:
+    def test_audit_write_failure_does_not_fail_operation(self, client, monkeypatch):
+        """Bug #3: a broken audit log must not turn a successful op into a 500."""
+        from api import audit as audit_module
+
+        def boom(*args, **kwargs):
+            raise OSError("disk full (simulated)")
+
+        monkeypatch.setattr(audit_module, "_audit_path", boom)
+        r = client.post("/api/skills/scaffold", json={"manifest": _manifest(name="audit-fail-skill")})
+        assert r.status_code == 200, r.text
+        assert r.json()["success"] is True
+
+
+class TestCompliancePermissionsTypeGuard:
+    def test_non_list_permissions_does_not_corrupt_count(self, client, monkeypatch):
+        """Bug #5: a truthy non-list `permissions` must not produce len() of a string."""
+        from skill_sdk import validation as validation_module
+
+        manifest = _manifest(name="bad-perms-skill")
+        manifest["permissions"] = [{"resource": "db", "actions": ["read"]}]
+        r = client.post("/api/skills/scaffold", json={"manifest": manifest, "publish": True})
+        assert r.status_code == 200, r.text
+
+        original_load_manifest = validation_module.load_manifest
+
+        def patched_load_manifest(path):
+            m = dict(original_load_manifest(path))
+            if m.get("name") == "bad-perms-skill":
+                m["permissions"] = "not-a-list"
+            return m
+
+        import api.routes.skills as skills_module
+        monkeypatch.setattr(skills_module, "load_manifest", patched_load_manifest)
+
+        comp = client.get("/api/skills/compliance").json()["skills"]
+        row = next(s for s in comp if s["name"] == "bad-perms-skill")
+        assert row["permissions"] == 0
+        assert row["permission_details"] == []
 
 
 class TestImpact:

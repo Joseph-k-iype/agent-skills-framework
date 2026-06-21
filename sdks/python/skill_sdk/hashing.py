@@ -81,18 +81,22 @@ def compute_skill_id(
     hasher.update(canonical.encode("utf-8"))
 
     # 2) Each source file: POSIX relative path + NUL + streamed bytes + NUL.
+    # The path framing is only written once the file is confirmed readable —
+    # silently skipping an unreadable file mid-hash (e.g. a permission glitch
+    # or a TOCTOU delete) would corrupt the digest without any signal to the
+    # caller, defeating the whole point of a content-addressed integrity hash.
     root = Path(skill_root).resolve()
     for path in iter_source_files(root):
         relative = path.relative_to(root).as_posix()
-        hasher.update(relative.encode("utf-8"))
-        hasher.update(b"\x00")
         try:
             with path.open("rb") as fh:
+                hasher.update(relative.encode("utf-8"))
+                hasher.update(b"\x00")
                 for chunk in iter(lambda: fh.read(_CHUNK_SIZE), b""):
                     hasher.update(chunk)
-        except (OSError, PermissionError):
-            continue
-        hasher.update(b"\x00")
+                hasher.update(b"\x00")
+        except OSError as e:
+            raise OSError(f"Cannot read source file '{relative}' while computing skill id: {e}") from e
 
     digest = hasher.hexdigest()
     name = manifest.get("name", "unknown")

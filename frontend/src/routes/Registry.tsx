@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { api } from '../lib/api'
+import { RequirePermission } from '../components/RequireRole'
 
 export default function Registry() {
   const queryClient = useQueryClient()
@@ -70,23 +71,26 @@ export default function Registry() {
             Manage skill registry and sources
           </p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="btn-secondary"
-          >
-            <RefreshCw size={16} className={syncMutation.isPending ? 'animate-spin' : ''} />
-            Sync
-          </button>
-          <button onClick={() => setShowAddSource(!showAddSource)} className="btn-primary">
-            <Plus size={16} />
-            Add Source
-          </button>
-        </div>
+        <RequirePermission actions={['registry:manage']}>
+          <div className="flex gap-3">
+            <button
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="btn-secondary"
+            >
+              <RefreshCw size={16} className={syncMutation.isPending ? 'animate-spin' : ''} />
+              Sync
+            </button>
+            <button onClick={() => setShowAddSource(!showAddSource)} className="btn-primary">
+              <Plus size={16} />
+              Add Source
+            </button>
+          </div>
+        </RequirePermission>
       </div>
 
       {showAddSource && (
+        <RequirePermission actions={['registry:manage']}>
         <div className="card border-brand-600/30">
           <h3 className="mb-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
             Add Registry Source
@@ -152,6 +156,7 @@ export default function Registry() {
             )}
           </form>
         </div>
+        </RequirePermission>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">

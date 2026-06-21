@@ -25,6 +25,7 @@ import '@xyflow/react/dist/style.css'
 import { api } from '../lib/api'
 import { shortHash } from '../lib/utils'
 import InstallModal from '../components/InstallModal'
+import { RequirePermission } from '../components/RequireRole'
 
 type Tab = 'manifest' | 'docs' | 'versions' | 'dependencies'
 
@@ -199,12 +200,14 @@ export default function SkillDetail() {
             {detail.versions?.length ?? 0} versions published
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => setInstallOpen(true)}>
-            <Download size={16} />
-            Install
-          </button>
-        </div>
+        <RequirePermission actions={['skill:install']}>
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={() => setInstallOpen(true)}>
+              <Download size={16} />
+              Install
+            </button>
+          </div>
+        </RequirePermission>
       </div>
 
       {manifest && (

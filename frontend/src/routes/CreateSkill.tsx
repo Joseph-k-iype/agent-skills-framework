@@ -26,6 +26,29 @@ import { useAuth } from '../lib/auth'
 
 const steps = ['Basic Info', 'Capabilities & Permissions', 'Dependencies & Triggers', 'Review']
 
+// Mirrors the backend's strict validators (sdks/python/skill_sdk/validation.py):
+// names must be kebab-case starting with a letter, versions must be full SemVer.
+const NAME_PATTERN = /^[a-z][a-z0-9-]*$/
+const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+
+function validateName(name: string): string | null {
+  if (!name) return 'Name is required'
+  if (!NAME_PATTERN.test(name)) {
+    return 'Must be kebab-case (lowercase letters, numbers, hyphens) and start with a letter'
+  }
+  if (name.length < 2) return 'Name must be at least 2 characters'
+  if (name.length > 64) return 'Name must be at most 64 characters'
+  return null
+}
+
+function validateVersion(version: string): string | null {
+  if (!version) return 'Version is required'
+  if (!SEMVER_PATTERN.test(version)) {
+    return 'Must be a full SemVer version, e.g. 1.0.0 or 1.0.0-rc.1'
+  }
+  return null
+}
+
 const defaultManifest: SkillManifest = {
   name: 'my-skill',
   version: '0.1.0',
@@ -46,6 +69,8 @@ export default function CreateSkill() {
   const [step, setStep] = useState(0)
   const [manifest, setManifest] = useState<SkillManifest>({ ...defaultManifest, dependencies: {} })
   const [newCapability, setNewCapability] = useState('')
+  const [capabilityDuplicate, setCapabilityDuplicate] = useState(false)
+  const [permissionActionDuplicate, setPermissionActionDuplicate] = useState(false)
   const [newPermResource, setNewPermResource] = useState('')
   const [newPermAction, setNewPermAction] = useState('')
   const [pipDep, setPipDep] = useState('')
@@ -59,6 +84,10 @@ export default function CreateSkill() {
 
   const update = <K extends keyof SkillManifest>(key: K, value: SkillManifest[K]) =>
     setManifest((m) => ({ ...m, [key]: value }))
+
+  const nameError = validateName(manifest.name)
+  const versionError = validateVersion(manifest.version)
+  const hasBasicInfoErrors = Boolean(nameError || versionError)
 
   // Strip empty collections so the scaffolded manifest is clean and minimal.
   const buildManifestPayload = () => {
@@ -100,21 +129,34 @@ export default function CreateSkill() {
   const scaffoldResult = scaffoldMutation.data
 
   const addCapability = () => {
-    if (!newCapability.trim()) return
-    update('capabilities', [...(manifest.capabilities ?? []), newCapability.trim()])
+    const value = newCapability.trim()
+    if (!value) return
+    if ((manifest.capabilities ?? []).includes(value)) {
+      setCapabilityDuplicate(true)
+      return
+    }
+    setCapabilityDuplicate(false)
+    update('capabilities', [...(manifest.capabilities ?? []), value])
     setNewCapability('')
   }
 
   const addPermission = () => {
-    if (!newPermResource.trim() || !newPermAction.trim()) return
+    const resource = newPermResource.trim()
+    const action = newPermAction.trim()
+    if (!resource || !action) return
     const existing = manifest.permissions ?? []
-    const idx = existing.findIndex((p) => p.resource === newPermResource.trim())
+    const idx = existing.findIndex((p) => p.resource === resource)
+    if (idx >= 0 && existing[idx].actions.includes(action)) {
+      setPermissionActionDuplicate(true)
+      return
+    }
+    setPermissionActionDuplicate(false)
     if (idx >= 0) {
       const updated = [...existing]
-      updated[idx] = { ...updated[idx], actions: [...new Set([...updated[idx].actions, newPermAction.trim()])] }
+      updated[idx] = { ...updated[idx], actions: [...new Set([...updated[idx].actions, action])] }
       update('permissions', updated)
     } else {
-      update('permissions', [...existing, { resource: newPermResource.trim(), actions: [newPermAction.trim()] }])
+      update('permissions', [...existing, { resource, actions: [action] }])
     }
     setNewPermAction('')
   }
@@ -205,11 +247,25 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm text-gray-400">Name</label>
-                <input className="input" placeholder="my-skill" value={manifest.name} onChange={(e) => update('name', e.target.value)} />
+                <input
+                  className="input"
+                  placeholder="my-skill"
+                  value={manifest.name}
+                  onChange={(e) => update('name', e.target.value)}
+                  aria-invalid={Boolean(nameError)}
+                />
+                {nameError && <p className="mt-1 text-xs text-red-400">{nameError}</p>}
               </div>
               <div>
                 <label className="mb-1.5 block text-sm text-gray-400">Version</label>
-                <input className="input" placeholder="0.1.0" value={manifest.version} onChange={(e) => update('version', e.target.value)} />
+                <input
+                  className="input"
+                  placeholder="0.1.0"
+                  value={manifest.version}
+                  onChange={(e) => update('version', e.target.value)}
+                  aria-invalid={Boolean(versionError)}
+                />
+                {versionError && <p className="mt-1 text-xs text-red-400">{versionError}</p>}
               </div>
               <div>
                 <label className="mb-1.5 block text-sm text-gray-400">Runtime</label>
@@ -241,9 +297,10 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                 <FileKey size={14} /> Capabilities
               </h3>
               <div className="flex gap-2">
-                <input className="input flex-1" placeholder="Add capability..." value={newCapability} onChange={(e) => setNewCapability(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCapability()} />
+                <input className="input flex-1" placeholder="Add capability..." value={newCapability} onChange={(e) => { setNewCapability(e.target.value); setCapabilityDuplicate(false) }} onKeyDown={(e) => e.key === 'Enter' && addCapability()} />
                 <button onClick={addCapability} className="btn-secondary"><Plus size={16} /> Add</button>
               </div>
+              {capabilityDuplicate && <p className="text-xs text-amber-400">Already added</p>}
               <div className="flex flex-wrap gap-2">
                 {(manifest.capabilities ?? []).map((c) => (
                   <span key={c} className="tag bg-brand-600/10 text-brand-400 flex items-center gap-1">
@@ -261,10 +318,11 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
                 <Eye size={14} /> Permissions
               </h3>
               <div className="flex gap-2">
-                <input className="input flex-1" placeholder="Resource (e.g. database:orders)" value={newPermResource} onChange={(e) => setNewPermResource(e.target.value)} />
-                <input className="input w-36" placeholder="Action (e.g. read)" value={newPermAction} onChange={(e) => setNewPermAction(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addPermission()} />
+                <input className="input flex-1" placeholder="Resource (e.g. database:orders)" value={newPermResource} onChange={(e) => { setNewPermResource(e.target.value); setPermissionActionDuplicate(false) }} />
+                <input className="input w-36" placeholder="Action (e.g. read)" value={newPermAction} onChange={(e) => { setNewPermAction(e.target.value); setPermissionActionDuplicate(false) }} onKeyDown={(e) => e.key === 'Enter' && addPermission()} />
                 <button onClick={addPermission} className="btn-secondary"><Plus size={16} /> Add</button>
               </div>
+              {permissionActionDuplicate && <p className="text-xs text-amber-400">Already added</p>}
               <div className="space-y-2">
                 {(manifest.permissions ?? []).map((p, i) => (
                   <div key={i} className="flex items-center justify-between rounded-lg border border-gray-800 p-2">
@@ -421,7 +479,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-800 pt-4">
               <button
                 onClick={() => scaffoldMutation.mutate(false)}
-                disabled={scaffoldMutation.isPending}
+                disabled={scaffoldMutation.isPending || hasBasicInfoErrors}
                 className="btn-secondary"
               >
                 <Code size={16} /> Scaffold on server
@@ -429,7 +487,7 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
               {can('skill:publish') && (
                 <button
                   onClick={() => scaffoldMutation.mutate(true)}
-                  disabled={scaffoldMutation.isPending}
+                  disabled={scaffoldMutation.isPending || hasBasicInfoErrors}
                   className="btn-primary"
                 >
                   <Rocket size={16} /> {scaffoldMutation.isPending ? 'Working...' : 'Scaffold & Publish'}
@@ -481,7 +539,11 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
             <ChevronLeft size={16} /> Back
           </button>
           {step < steps.length - 1 ? (
-            <button onClick={() => setStep(Math.min(steps.length - 1, step + 1))} className="btn-primary">
+            <button
+              onClick={() => setStep(Math.min(steps.length - 1, step + 1))}
+              disabled={hasBasicInfoErrors}
+              className="btn-primary"
+            >
               Next <ChevronRight size={16} />
             </button>
           ) : (

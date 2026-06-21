@@ -2,7 +2,9 @@ export interface SkillEntry {
   latest: string
   versions: string[]
   ids: Record<string, string>
-  locations: Record<string, string>
+  // Only present on the per-skill detail response (GET /api/skills/{name});
+  // the list endpoint (GET /api/skills, RegistryClient.list_skills()) omits it.
+  locations?: Record<string, string>
 }
 
 export interface SkillVersion {

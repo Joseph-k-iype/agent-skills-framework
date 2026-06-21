@@ -474,6 +474,16 @@ def validate_manifest_with_path(manifest: dict[str, Any], skill_root: str | Path
     errors = validate_manifest(manifest)
     errors.extend(validate_skill_id(manifest, skill_root))
     errors.extend(detect_dependency_cycles(manifest))
+    # ``validate_manifest`` calls ``_validate_entry`` without a ``skill_root``,
+    # so it only checks the entry's extension, never that the file actually
+    # exists. Since this function *does* have the skill root, also check
+    # existence here — otherwise a manifest with a nonexistent ``entry`` (e.g.
+    # a typo) passes cleanly and `RegistryClient.publish()`/`verify()` can
+    # succeed for a skill whose entry point is missing.
+    if "entry" in manifest:
+        errors.extend(
+            _validate_entry(manifest["entry"], manifest.get("runtime", ""), Path(skill_root))
+        )
     return errors
 
 

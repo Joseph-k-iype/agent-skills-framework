@@ -30,6 +30,8 @@ def resolve_in_workspace(p: str) -> Path:
     """
     if not p or not str(p).strip():
         raise HTTPException(status_code=400, detail="Path is required")
+    if "\x00" in str(p):
+        raise HTTPException(status_code=400, detail="Path must not contain a NUL byte")
     root = workspace_root()
     raw = Path(p)
     candidate = (raw if raw.is_absolute() else root / raw).resolve()

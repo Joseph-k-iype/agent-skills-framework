@@ -318,13 +318,18 @@ def find_repo_root(start: str | Path) -> Path | None:
     return None
 
 
-def git_tag_skill(name: str, version: str, skill_id: str, repo_root: str | Path) -> None:
+def git_tag_skill(
+    name: str, version: str, skill_id: str, repo_root: str | Path, force: bool = False
+) -> None:
     tag = f"skill/{name}/{version}"
     msg = f"Skill: {name}@{version}\nID: {skill_id}"
 
+    cmd = ["git", "tag", "-a", tag, "-m", msg]
+    if force:
+        cmd.insert(2, "-f")
     try:
         subprocess.run(
-            ["git", "tag", "-a", tag, "-m", msg],
+            cmd,
             cwd=str(repo_root),
             capture_output=True,
             text=True,
@@ -336,6 +341,29 @@ def git_tag_skill(name: str, version: str, skill_id: str, repo_root: str | Path)
         raise ValidationError(f"Git tag failed: {(e.stderr or '').strip()}")
     except FileNotFoundError:
         raise ValidationError("Git not found — cannot create tag")
+
+
+def git_tag_delete(name: str, version: str, repo_root: str | Path) -> None:
+    """Delete the local ``skill/<name>/<version>`` tag, if present.
+
+    Used by force-republish: a stale tag pointing at the previous content must
+    be removed before re-tagging, otherwise ``git tag -f`` would still leave
+    ambiguity for callers that check existence before deciding whether to tag.
+    Local-only — never pushes/deletes the tag on any remote.
+    """
+    tag = f"skill/{name}/{version}"
+    try:
+        subprocess.run(
+            ["git", "tag", "-d", tag],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise ValidationError(f"Failed to delete git tag '{tag}': {(e.stderr or '').strip()}")
+    except FileNotFoundError:
+        raise ValidationError("Git not found — cannot delete tag")
 
 
 def git_tag_exists(name: str, version: str, repo_root: str | Path) -> bool:

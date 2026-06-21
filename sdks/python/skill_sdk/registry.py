@@ -20,7 +20,13 @@ from .validation import (
     detect_dependency_cycles,
     _dep_names,
 )
-from .versioning import find_repo_root, git_tag_skill, git_tag_exists, max_version
+from .versioning import (
+    find_repo_root,
+    git_tag_skill,
+    git_tag_exists,
+    git_tag_delete,
+    max_version,
+)
 from .sources import create_source
 
 try:  # POSIX file locking for cross-process safety; degrades gracefully elsewhere.
@@ -216,12 +222,27 @@ class RegistryClient:
 
             if do_tag:
                 repo_root = self._find_repo_root(skill_path)
-                if repo_root and not git_tag_exists(name, version, repo_root):
-                    try:
-                        git_tag_skill(name, version, skill_id, repo_root)
-                        git_tag = f"skill/{name}/{version}"
-                    except (ValidationError, FileNotFoundError):
-                        git_tag = None
+                if repo_root:
+                    tag_exists = git_tag_exists(name, version, repo_root)
+                    # A force-republish of an already-tagged version must move
+                    # the tag to point at the new content, not skip tagging.
+                    # Skipping here would leave the index recording the *new*
+                    # hash while the git tag still points at the *old* one —
+                    # exactly the false-positive `verify-git` mismatch this is
+                    # fixing. Deleting+recreating (local-only, no push) keeps
+                    # the recorded tag and the recorded hash in sync.
+                    if tag_exists and force:
+                        try:
+                            git_tag_delete(name, version, repo_root)
+                            tag_exists = False
+                        except ValidationError:
+                            pass
+                    if not tag_exists:
+                        try:
+                            git_tag_skill(name, version, skill_id, repo_root)
+                            git_tag = f"skill/{name}/{version}"
+                        except (ValidationError, FileNotFoundError):
+                            git_tag = None
 
             self._register_in_index(index, name, version, dest, skill_id, git_tag)
             self._save_index(index)
@@ -410,26 +431,45 @@ class RegistryClient:
         return {"status": "added", "source": source_config}
 
     def sync_from_sources(self) -> dict[str, Any]:
+        # Read the current source list under the lock, then release it before
+        # doing any network I/O. ``create_source(...).list_skills()`` can do a
+        # ``git fetch``/``git clone`` over the network — holding the exclusive
+        # index lock for that duration would block every other registry
+        # reader/writer for as long as the network call takes. Mirrors the
+        # graph-sync-outside-lock pattern used in ``publish()``.
+        with self._locked():
+            source_configs = list(self._load_index().get("sources", []))
+
+        synced: list[str] = []
+        errors: list[str] = []
+        discovered: dict[str, dict[str, Any]] = {}
+        for source_config in source_configs:
+            try:
+                src = create_source(source_config)
+                skills = src.list_skills()
+            except Exception as e:
+                errors.append(f"{source_config.get('type', 'unknown')}: {e}")
+                continue
+            for name, sinfo in skills.items():
+                bucket = discovered.setdefault(name, {"versions": []})
+                for ver in sinfo.get("versions", []):
+                    if ver not in bucket["versions"]:
+                        bucket["versions"].append(ver)
+            synced.extend(skills.keys())
+
+        # Re-acquire the lock only to merge the network-discovered results into
+        # a freshly re-read index (it may have changed while we were offline
+        # doing I/O) and save.
         with self._locked():
             index = self._load_index()
-            synced: list[str] = []
-            errors: list[str] = []
-            for source_config in index.get("sources", []):
-                try:
-                    src = create_source(source_config)
-                    skills = src.list_skills()
-                except Exception as e:
-                    errors.append(f"{source_config.get('type', 'unknown')}: {e}")
-                    continue
-                for name, sinfo in skills.items():
-                    entry = index["skills"].setdefault(
-                        name, {"versions": [], "latest": "", "ids": {}, "locations": {}}
-                    )
-                    for ver in sinfo.get("versions", []):
-                        if ver not in entry["versions"]:
-                            entry["versions"].append(ver)
-                    # SemVer-correct latest (string compare made "0.10.0" < "0.9.0").
-                    entry["latest"] = max_version(entry["versions"]) or entry.get("latest", "")
-                    synced.append(name)
+            for name, sinfo in discovered.items():
+                entry = index["skills"].setdefault(
+                    name, {"versions": [], "latest": "", "ids": {}, "locations": {}}
+                )
+                for ver in sinfo["versions"]:
+                    if ver not in entry["versions"]:
+                        entry["versions"].append(ver)
+                # SemVer-correct latest (string compare made "0.10.0" < "0.9.0").
+                entry["latest"] = max_version(entry["versions"]) or entry.get("latest", "")
             self._save_index(index)
         return {"synced": len(synced), "skills": synced, "errors": errors}

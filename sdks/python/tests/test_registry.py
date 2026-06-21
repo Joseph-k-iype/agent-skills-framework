@@ -309,6 +309,64 @@ class TestGitTagPersistence:
         assert entry.get("git_tags", {}).get("1.0.0") == "skill/test-skill/1.0.0"
 
 
+class TestForceRepublishRetag:
+    def test_force_republish_moves_tag_to_new_content(self, tmp_path, valid_skill):
+        """A forced republish of an already-tagged version must re-tag so the
+        git tag's content matches the index's recorded hash. Before the fix,
+        the tag was left pointing at the *old* commit/content while the index
+        recorded the *new* hash, which `verify-git` would flag as a mismatch.
+        """
+        import subprocess
+
+        repo = valid_skill
+
+        def commit(msg):
+            subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", msg],
+                cwd=repo, check=True,
+            )
+
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        commit("initial")
+
+        reg = RegistryClient(tmp_path, auto_tag=True)
+        first = reg.publish(repo)
+        assert first["git_tag"] == "skill/test-skill/1.0.0"
+
+        tag_commit_before = subprocess.run(
+            ["git", "rev-list", "-n", "1", "skill/test-skill/1.0.0"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+
+        # Mutate the skill source and commit, so the new publish computes a
+        # different content hash from a different HEAD commit.
+        (repo / "src" / "main.py").write_text("# changed content")
+        commit("mutate source")
+
+        second = reg.publish(repo, force=True)
+        assert second["id"] != first["id"], "hash should change after source mutation"
+        assert second["git_tag"] == "skill/test-skill/1.0.0"
+
+        tag_commit_after = subprocess.run(
+            ["git", "rev-list", "-n", "1", "skill/test-skill/1.0.0"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+
+        # (a) index hash changed
+        entry = reg.info("test-skill")
+        assert entry["ids"]["1.0.0"] == second["id"]
+        assert entry["ids"]["1.0.0"] != first["id"]
+
+        # (b) the git tag itself was force-moved to the new HEAD commit, i.e.
+        # it no longer points at the stale pre-mutation commit.
+        assert tag_commit_after != tag_commit_before
+        head_commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        assert tag_commit_after == head_commit
+
+
 class TestInstallIntegrity:
     def test_install_detects_tampered_registry(self, registry, valid_skill):
         result = registry.publish(valid_skill)

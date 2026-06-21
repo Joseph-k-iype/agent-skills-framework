@@ -97,7 +97,8 @@ def skills_compliance(registry: RegistryClient = Depends(get_registry)):
                 try:
                     m = load_manifest(mpath)
                     runtime = m.get("runtime", "")
-                    permission_details = m.get("permissions", []) or []
+                    raw_permissions = m.get("permissions")
+                    permission_details = raw_permissions if isinstance(raw_permissions, list) else []
                     permissions = len(permission_details)
                     capabilities = len(m.get("capabilities", []) or [])
                 except ValidationError:
@@ -267,16 +268,21 @@ def scaffold_skill(req: ScaffoldRequest, registry: RegistryClient = Depends(get_
         raise HTTPException(status_code=400, detail="manifest.name is required")
 
     dest = resolve_in_workspace(name)
-    if dest.exists() and not req.force:
-        raise HTTPException(status_code=400, detail=f"'{name}' already exists in workspace (use force)")
 
     entry = manifest.get("entry") or "src/main.py"
     manifest["entry"] = entry
     runtime = manifest.get("runtime", "python")
 
-    dest.mkdir(parents=True, exist_ok=True)
+    entry_path = resolve_in_workspace(str(Path(name) / entry))
+
+    if req.force:
+        dest.mkdir(parents=True, exist_ok=True)
+    else:
+        try:
+            dest.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise HTTPException(status_code=400, detail=f"'{name}' already exists in workspace (use force)")
     (dest / "tests").mkdir(exist_ok=True)
-    entry_path = dest / entry
     entry_path.parent.mkdir(parents=True, exist_ok=True)
     if not entry_path.exists():
         entry_path.write_text(_entry_stub(name, runtime), encoding="utf-8")

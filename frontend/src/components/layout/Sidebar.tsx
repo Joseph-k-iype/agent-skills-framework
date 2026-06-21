@@ -9,13 +9,13 @@ import {
   GitBranch,
   ClipboardList,
 } from 'lucide-react'
-import { useAuth } from '../../lib/auth'
+import { useAuth, UserRole } from '../../lib/auth'
 
 interface NavItem {
   to: string
   label: string
   icon: typeof LayoutDashboard
-  minRole?: string
+  minRole?: UserRole
 }
 
 const navItems: NavItem[] = [
@@ -45,7 +45,7 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems
-          .filter((item) => !item.minRole || isAtLeast(item.minRole as any))
+          .filter((item) => !item.minRole || isAtLeast(item.minRole))
           .map((item) => (
           <NavLink
             key={item.to}

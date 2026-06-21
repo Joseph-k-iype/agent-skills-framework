@@ -35,18 +35,21 @@ def record(
         "status": status,
         "details": details,
     }
-    path = _audit_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(entry) + "\n"
-    with open(path, "a", encoding="utf-8") as f:
-        if fcntl is not None:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        try:
-            f.write(line)
-            f.flush()
-        finally:
+    try:
+        path = _audit_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(entry) + "\n"
+        with open(path, "a", encoding="utf-8") as f:
             if fcntl is not None:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                f.write(line)
+                f.flush()
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    except Exception as exc:  # audit logging must never fail the caller's request
+        print(f"[audit] failed to record event {entry['id']} ({action}): {exc}")
     return entry
 
 

@@ -12,6 +12,7 @@ from skill_sdk.validation import (
     load_manifest,
     find_manifest_file,
     _parse_frontmatter,
+    _validate_name,
     ValidationError,
     validate_full_skill,
     lint_full_skill,
@@ -26,17 +27,43 @@ GRAPH_HOST_ENV = "SKILLS_GRAPH_HOST"
 GRAPH_PORT_ENV = "SKILLS_GRAPH_PORT"
 
 
+def _resolve_graph_host_port(args, default_port: int = 6379) -> tuple[str | None, int]:
+    """Resolve graph host/port with precedence: flag overrides env overrides default.
+
+    Uses explicit `is not None` checks (not truthy `or`) so an explicitly-passed
+    `--graph-port 0` (or an env var set to "0") is respected rather than silently
+    falling through to the next source.
+    """
+    flag_host = getattr(args, "graph_host", None)
+    host = flag_host if flag_host is not None else os.environ.get(GRAPH_HOST_ENV)
+
+    flag_port = getattr(args, "graph_port", None)
+    if flag_port is not None:
+        port = flag_port
+    else:
+        env_port = os.environ.get(GRAPH_PORT_ENV)
+        port = int(env_port) if env_port is not None else default_port
+
+    return host, port
+
+
 def _get_registry(args) -> RegistryClient:
-    host = getattr(args, "graph_host", None) or os.environ.get(GRAPH_HOST_ENV)
+    host, port = _resolve_graph_host_port(args)
     graph = None
     if host:
-        port = getattr(args, "graph_port", None) or int(os.environ.get(GRAPH_PORT_ENV, 6379))
         graph = FalkorDBConnector(host=host, port=port, enabled=True)
     return RegistryClient(args.registry or Path.cwd() / "registry", graph=graph)
 
 
 def cmd_init(args):
     name = args.name
+    name_errors = _validate_name(name)
+    if name_errors:
+        print(f"✗ Invalid skill name '{name}':")
+        for err in name_errors:
+            print(f"  - {err}")
+        sys.exit(1)
+
     path = Path(args.path or name)
     if path.exists():
         print(f"Error: directory '{path}' already exists")
@@ -51,7 +78,7 @@ def cmd_init(args):
     manifest_lines = []
     manifest_lines.append(f"name: {name}")
     manifest_lines.append("version: 0.1.0")
-    manifest_lines.append(f"description: Description of {name}")
+    manifest_lines.append(f'description: "TODO: describe what {name} does and when an agent should use it"')
     manifest_lines.append("runtime: python")
     manifest_lines.append("api_version: 1")
     manifest_lines.append("entry: src/main.py")
@@ -121,6 +148,7 @@ class Skill(BaseSkill):
     print(f"  Entry:    {main_py}")
     print(f"  Tests:    {tests}")
     print(f"\nNext steps:")
+    print(f"  ⚠ Edit the description in SKILL.md before publishing — it should state what this skill does AND when an agent should use it")
     print(f"  cd {path}")
     print(f"  skill validate")
     print(f"  skill publish")
@@ -178,12 +206,16 @@ def cmd_build(args):
                 print(f"  - {err}")
             sys.exit(1)
 
-    manifest = load_manifest(manifest_file)
-    name = manifest["name"]
-    version = manifest["version"]
+    try:
+        manifest = load_manifest(manifest_file)
+        name = manifest["name"]
+        version = manifest["version"]
 
-    skill_id = compute_skill_id(manifest, target)
-    manifest["id"] = skill_id
+        skill_id = compute_skill_id(manifest, target)
+        manifest["id"] = skill_id
+    except ValidationError as e:
+        print(f"✗ Build failed: {e}")
+        sys.exit(1)
 
     import shutil
     import yaml
@@ -256,6 +288,9 @@ def cmd_publish(args):
     except ValidationError as e:
         print(f"✗ Publish failed: {e}")
         sys.exit(1)
+    except Exception as e:
+        print(f"✗ Publish failed: {e}")
+        sys.exit(1)
 
 
 def cmd_install(args):
@@ -272,6 +307,9 @@ def cmd_install(args):
     except ValidationError as e:
         print(f"✗ Install failed: {e}")
         sys.exit(1)
+    except Exception as e:
+        print(f"✗ Install failed: {e}")
+        sys.exit(1)
 
 
 def cmd_list(args):
@@ -285,7 +323,8 @@ def cmd_list(args):
     for name, info in sorted(skills.items()):
         ids = info.get("ids", {})
         current_id = ids.get(info["latest"], "")
-        hash_short = current_id.split("/")[3][:12] if current_id and "/" in current_id else ""
+        parts = current_id.split("/") if current_id else []
+        hash_short = parts[3][:12] if len(parts) > 3 else ""
         print(f"  {name}@{info['latest']}  [{hash_short}...]  (versions: {len(info['versions'])})")
 
 
@@ -332,6 +371,9 @@ def cmd_verify(args):
     except ValidationError as e:
         print(f"✗ {e}")
         sys.exit(1)
+    except Exception as e:
+        print(f"✗ Verify failed: {e}")
+        sys.exit(1)
 
 
 def cmd_verify_git(args):
@@ -358,6 +400,10 @@ def cmd_verify_git(args):
 
 
 def cmd_sync(args):
+    if bool(args.source_type) != bool(args.source_url):
+        print("✗ --source-type and --source-url must be provided together")
+        sys.exit(1)
+
     registry = _get_registry(args)
     try:
         if args.source_type and args.source_url:
@@ -380,8 +426,8 @@ def cmd_sync(args):
 
 
 def cmd_graph(args):
-    host = args.graph_host or "localhost"
-    port = args.graph_port or 6379
+    host, port = _resolve_graph_host_port(args)
+    host = host or "localhost"
 
     if args.command == "connect":
         graph = FalkorDBConnector(host=host, port=port)
@@ -411,6 +457,9 @@ def cmd_graph(args):
         graph.disconnect()
 
     elif args.command == "query":
+        if not args.capability and not args.impact_id:
+            print("✗ Provide --capability or --impact-id")
+            sys.exit(1)
         graph = FalkorDBConnector(host=host, port=port)
         import asyncio
         connected = asyncio.run(graph.connect())
@@ -435,7 +484,6 @@ def main():
     init_p = sub.add_parser("init", help="Scaffold a new skill project")
     init_p.add_argument("name", help="Skill name (kebab-case)")
     init_p.add_argument("--path", help="Target directory (default: skill name)")
-    init_p.add_argument("--registry", help="Path to registry directory")
 
     val_p = sub.add_parser("validate", help="Validate a skill manifest")
     val_p.add_argument("path", nargs="?", default=".", help="Skill directory")
@@ -460,7 +508,9 @@ def main():
     inst_p.add_argument("--registry", help="Path to registry directory")
     inst_p.add_argument("--target", help="Install target directory (default: cwd)")
     inst_p.add_argument("--version", help="Specific version to install")
-    inst_p.add_argument("--source", help="Source type (local, git)")
+    inst_p.add_argument(
+        "--source", choices=["git"], help="Source type to install from (omit for a local registry install)"
+    )
     inst_p.add_argument("--no-verify", action="store_true", help="Skip post-install integrity check")
 
     list_p = sub.add_parser("list", help="List skills in registry")

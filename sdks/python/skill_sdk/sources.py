@@ -87,10 +87,21 @@ class GitSource(SkillSource):
             return self._cache
         import tempfile
         tmp = Path(tempfile.mkdtemp()) / "repo"
-        subprocess.run(
-            ["git", "clone", "--depth", "1", "--branch", self.ref, self.url, str(tmp)],
-            capture_output=True, text=True, check=True,
-        )
+        try:
+            subprocess.run(
+                # Not a shallow (``--depth 1``) clone: skill tags are
+                # typically historical, not at the tip of ``ref``, and a
+                # shallow clone's truncated history makes later tag-based
+                # checkouts fail to resolve commits outside that depth even
+                # when the tag itself is fetched — reported misleadingly as
+                # "tag not found" when the tag genuinely exists upstream.
+                ["git", "clone", "--branch", self.ref, self.url, str(tmp)],
+                capture_output=True, text=True, check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise FileNotFoundError(f"Failed to clone '{self.url}' (ref '{self.ref}'): {(e.stderr or '').strip()}")
+        except FileNotFoundError:
+            raise FileNotFoundError("Git not found — cannot clone source repository")
         if self._cache:
             self._cache.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(tmp), str(self._cache))
