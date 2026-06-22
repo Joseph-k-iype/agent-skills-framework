@@ -184,7 +184,7 @@ def evaluate_skill(
         report.summary = _summarize(report)
         return report
 
-    return run_agentic_evaluation(
+    report = run_agentic_evaluation(
         skill_path=skill_path,
         manifest=manifest,
         registry_path=registry_path,
@@ -192,6 +192,8 @@ def evaluate_skill(
         base_report=report,
         judge=judge,
     )
+    report.overall_score = compute_overall_score(report)
+    return report
 
 
 def _summarize(report: EvaluationReport) -> str:

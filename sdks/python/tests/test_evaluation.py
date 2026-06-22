@@ -3,6 +3,13 @@ import tempfile
 from pathlib import Path
 
 from skill_sdk.evaluation import evaluate_skill
+from skill_sdk.evaluation.state import (
+    AgentExecutionSummary,
+    ConfigAggregate,
+    EvaluationReport,
+    ExecutorSummary,
+    compute_overall_score,
+)
 
 MANIFEST = {
     "name": "demo-skill",
@@ -57,6 +64,43 @@ def test_evaluate_skill_reports_structural_errors(monkeypatch):
     _make_skill(tmp, bad_manifest)
     report = evaluate_skill(tmp)
     assert any("description" in e.lower() for e in report.structural_errors)
+
+
+def test_compute_overall_score_includes_agent_execution_component():
+    test_only_report = EvaluationReport(
+        skill_name="demo-skill",
+        skill_version="1.0.0",
+        run_at="2026-06-22T00:00:00+00:00",
+        judge_status="ok",
+        judge_skip_reason=None,
+        test_executor=ExecutorSummary(passed=1, failed=0, total=1),
+    )
+    test_only_score = compute_overall_score(test_only_report)
+    assert test_only_score == 100.0
+
+    with_agent_exec_report = EvaluationReport(
+        skill_name="demo-skill",
+        skill_version="1.0.0",
+        run_at="2026-06-22T00:00:00+00:00",
+        judge_status="ok",
+        judge_skip_reason=None,
+        test_executor=ExecutorSummary(passed=1, failed=0, total=1),
+        agent_execution=AgentExecutionSummary(
+            comparison_mode="with_without",
+            skip_reason=None,
+            runs_per_case=3,
+            with_skill=ConfigAggregate(pass_rate_mean=0.5),
+            baseline=ConfigAggregate(pass_rate_mean=0.1),
+        ),
+    )
+    with_agent_exec_score = compute_overall_score(with_agent_exec_report)
+
+    # The agent-execution component (50.0, from pass_rate_mean=0.5) averaged
+    # with the test-executor component (100.0) must pull the overall score
+    # down from the test-only score — proving compute_overall_score actually
+    # factors in report.agent_execution rather than ignoring it.
+    assert with_agent_exec_score != test_only_score
+    assert with_agent_exec_score == 75.0
 
 
 def test_evaluate_skill_never_raises_without_eval_extras_installed(monkeypatch):
