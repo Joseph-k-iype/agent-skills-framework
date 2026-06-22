@@ -93,6 +93,13 @@ def test_deny_list_allows_safe_rm():
     run_command("rm -rf ./build", ws.path)
 
 
+def test_deny_list_blocks_glob_root_deletion():
+    ws = make_workspace(PERMS_FS)
+    with pytest.raises(DestructiveCommandError):
+        run_command("rm -rf /*", ws.path)
+    run_command("rm -rf ./build", ws.path)  # still must not raise
+
+
 PERMS_DELETE = [{"resource": "workspace", "actions": ["delete"]}]
 
 

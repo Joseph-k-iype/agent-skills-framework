@@ -90,7 +90,8 @@ def run_command(cmd: str, cwd: Path, timeout_s: int = 60) -> tuple[int, str]:
 
 def _safe_join(ws: Path, rel: str) -> Path:
     target = (ws / rel).resolve()
-    if not str(target).startswith(str(ws.resolve())):
+    root = ws.resolve()
+    if target != root and root not in target.parents:
         raise ValueError(f"path escapes workspace: {rel}")
     return target
 
