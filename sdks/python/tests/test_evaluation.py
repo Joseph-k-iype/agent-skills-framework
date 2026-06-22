@@ -96,11 +96,14 @@ def test_compute_overall_score_includes_agent_execution_component():
     with_agent_exec_score = compute_overall_score(with_agent_exec_report)
 
     # The agent-execution component (50.0, from pass_rate_mean=0.5) averaged
-    # with the test-executor component (100.0) must pull the overall score
-    # down from the test-only score — proving compute_overall_score actually
+    # with the test-executor component (100.0) and the content-critic
+    # component (100.0 — judge_status="ok" with no findings means the critic
+    # ran clean, so it earns full marks) must pull the overall score down
+    # from the test-only score — proving compute_overall_score actually
     # factors in report.agent_execution rather than ignoring it.
+    # mean([100.0, 100.0, 50.0]) = 83.33
     assert with_agent_exec_score != test_only_score
-    assert with_agent_exec_score == 75.0
+    assert with_agent_exec_score == 83.33
 
 
 def test_evaluate_skill_never_raises_without_eval_extras_installed(monkeypatch):

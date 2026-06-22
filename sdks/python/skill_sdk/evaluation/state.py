@@ -125,7 +125,12 @@ def compute_overall_score(report: EvaluationReport) -> float | None:
     te = report.test_executor
     if te.total:
         components.append(100.0 * te.passed / te.total)
-    if report.content_critic_findings:
+    if report.judge_status == "ok":
+        # The content critic ran (regardless of whether it found anything) —
+        # a clean run earns full marks here, same as the original graph
+        # scorer. Gating on findings being non-empty (instead of on the
+        # critic having run) would silently exclude this component, and
+        # therefore lower the overall score, for ordinary successful runs.
         penalty = sum(_SEVERITY_WEIGHT.get(f.get("severity", "info"), 2)
                       for f in report.content_critic_findings)
         components.append(max(0.0, 100.0 - penalty))
