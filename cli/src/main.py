@@ -357,6 +357,44 @@ def cmd_doc(args):
         sys.exit(1)
 
 
+def _render_eval_markdown(report) -> str:
+    lines = []
+    status_icon = "✓" if not report.structural_errors else "✗"
+    lines.append(f"{status_icon} {report.skill_name}@{report.skill_version}")
+    lines.append(f"  Judge status: {report.judge_status}" + (
+        f" ({report.judge_skip_reason})" if report.judge_skip_reason else ""
+    ))
+    if report.structural_errors:
+        lines.append(f"  Structural errors ({len(report.structural_errors)}):")
+        for err in report.structural_errors:
+            lines.append(f"    - {err}")
+    for warning in report.structural_warnings:
+        lines.append(f"  ⚠ {warning}")
+    for finding in report.content_critic_findings:
+        lines.append(f"  [content] {finding.get('severity', 'info')}: {finding.get('message', '')}")
+    te = report.test_executor
+    if te.total:
+        lines.append(f"  Test cases: {te.passed}/{te.total} passed")
+    ae = report.agent_execution
+    if ae is not None:
+        lines.append("  Agent execution:")
+        if ae.comparison_mode == "skipped":
+            lines.append(f"    skipped: {ae.skip_reason}")
+        else:
+            lines.append(f"    mode: {ae.comparison_mode} (runs/case: {ae.runs_per_case})")
+            lines.append(f"    with-skill pass-rate: {ae.with_skill.pass_rate_mean:.2f}"
+                         f" (±{ae.with_skill.pass_rate_stddev:.2f})")
+            lines.append(f"    baseline pass-rate:   {ae.baseline.pass_rate_mean:.2f}"
+                         f" (±{ae.baseline.pass_rate_stddev:.2f})")
+            d = ae.delta
+            lines.append(f"    delta: pass-rate {d.get('pass_rate')}, "
+                         f"tokens {d.get('tokens')}, duration_ms {d.get('duration')}")
+    if report.overall_score is not None:
+        lines.append(f"  Overall score: {report.overall_score}")
+    lines.append(f"  {report.summary}")
+    return "\n".join(lines)
+
+
 def cmd_evaluate(args):
     target = Path(args.path)
     manifest_file = find_manifest_file(target)
@@ -365,30 +403,15 @@ def cmd_evaluate(args):
         sys.exit(1)
 
     registry_path = Path(args.registry) if args.registry else Path.cwd() / "registry"
-    report = evaluate_skill(target, judge=args.judge, registry_path=registry_path)
+    keep_artifacts = getattr(args, "keep_artifacts", False)
+    report = evaluate_skill(
+        target, judge=args.judge, registry_path=registry_path, keep_artifacts=keep_artifacts
+    )
 
     if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2))
     else:
-        status_icon = "✓" if not report.structural_errors else "✗"
-        print(f"{status_icon} {report.skill_name}@{report.skill_version}")
-        print(f"  Judge status: {report.judge_status}" + (
-            f" ({report.judge_skip_reason})" if report.judge_skip_reason else ""
-        ))
-        if report.structural_errors:
-            print(f"  Structural errors ({len(report.structural_errors)}):")
-            for err in report.structural_errors:
-                print(f"    - {err}")
-        for warning in report.structural_warnings:
-            print(f"  ⚠ {warning}")
-        for finding in report.content_critic_findings:
-            print(f"  [content] {finding.get('severity', 'info')}: {finding.get('message', '')}")
-        te = report.test_executor
-        if te.total:
-            print(f"  Test cases: {te.passed}/{te.total} passed")
-        if report.overall_score is not None:
-            print(f"  Overall score: {report.overall_score}")
-        print(f"  {report.summary}")
+        print(_render_eval_markdown(report))
 
     if report.structural_errors:
         sys.exit(1)
@@ -571,6 +594,10 @@ def main():
     )
     eval_p.add_argument("--format", default="markdown", choices=["markdown", "json"], help="Output format")
     eval_p.add_argument("--registry", help="Path to registry directory (for feedback memory)")
+    eval_p.add_argument(
+        "--keep-artifacts", action="store_true",
+        help="Keep agent-execution workspaces instead of deleting them",
+    )
 
     verify_p = sub.add_parser("verify", help="Verify a published skill's integrity")
     verify_p.add_argument("name", help="Skill name")

@@ -52,6 +52,7 @@ def _run_agent_execution_pass(
     task_cases: list[dict[str, Any]],
     judge: str | None,
     report: EvaluationReport,
+    keep_artifacts: bool = False,
 ) -> None:
     """Run the agent-execution (with-skill vs baseline) pass for declarative
     ``task`` cases, mutating ``report.agent_execution`` in place. Degrades to a
@@ -76,7 +77,12 @@ def _run_agent_execution_pass(
             )
         else:
             report.agent_execution = run_agent_execution(
-                skill_path, manifest, registry_path, task_cases, model
+                skill_path,
+                manifest,
+                registry_path,
+                task_cases,
+                model,
+                keep_artifacts=keep_artifacts,
             )
     except ImportError:
         report.agent_execution = _skipped_agent_execution(
@@ -118,6 +124,7 @@ def evaluate_skill(
     skill_path: str | Path,
     judge: str | None = None,
     registry_path: str | Path | None = None,
+    keep_artifacts: bool = False,
 ) -> EvaluationReport:
     """Run the evaluation framework against a skill directory.
 
@@ -167,7 +174,9 @@ def evaluate_skill(
     # early return below, so report.agent_execution/overall_score are set on
     # every code path — not just the happy path where run_agentic_evaluation
     # is reached.
-    _run_agent_execution_pass(skill_path, manifest, registry_path, task_cases, judge, report)
+    _run_agent_execution_pass(
+        skill_path, manifest, registry_path, task_cases, judge, report, keep_artifacts
+    )
     report.overall_score = compute_overall_score(report)
 
     if judge == "none":

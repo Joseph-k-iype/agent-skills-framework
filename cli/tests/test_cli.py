@@ -239,3 +239,21 @@ class TestBuildCommand:
         from cli.src.main import cmd_build
         cmd_build(self._args(buildable_skill))
         assert not (buildable_skill / "dist" / ".env").exists()
+
+
+def test_evaluate_markdown_renders_agent_execution_section(capsys):
+    from skill_sdk.evaluation.state import (
+        AgentExecutionSummary, ConfigAggregate, EvaluationReport)
+    # import the renderer used by cmd_evaluate (adjust name to the actual function)
+    from cli.src.main import _render_eval_markdown  # noqa
+    report = EvaluationReport(skill_name="s", skill_version="1.0.0", run_at="t",
+                              judge_status="ok", judge_skip_reason=None)
+    report.agent_execution = AgentExecutionSummary(
+        comparison_mode="with_without", skip_reason=None, runs_per_case=1,
+        with_skill=ConfigAggregate(pass_rate_mean=0.9),
+        baseline=ConfigAggregate(pass_rate_mean=0.3),
+        delta={"pass_rate": 0.6, "tokens": 1200.0, "duration": 8000.0}, cases=[])
+    text = _render_eval_markdown(report)
+    assert "Agent execution" in text
+    assert "with_without" in text
+    assert "0.6" in text  # delta pass_rate
