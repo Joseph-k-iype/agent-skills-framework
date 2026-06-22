@@ -380,6 +380,34 @@ def lint_full_skill(skill_path: str | Path) -> list[str]:
     warnings: list[str] = []
     if not (skill_path / "tests").exists():
         warnings.append("No 'tests/' directory found (recommended)")
+
+    manifest_path = find_manifest_file(skill_path)
+    manifest = _load_manifest_raw(manifest_path) if manifest_path is not None else None
+    if manifest:
+        try:
+            # Imported lazily (rather than at module level) to avoid a circular
+            # import: skill_sdk.evaluation.__init__ imports from this module.
+            # evaluation.cases itself only depends on yaml/pathlib, so this is
+            # safe and stays cheap even when the eval extras aren't installed.
+            from .evaluation.cases import load_eval_cases
+
+            cases = load_eval_cases(skill_path)
+        except Exception:
+            cases = []
+
+        declared = {
+            a for p in (manifest.get("permissions") or []) for a in p.get("actions", [])
+        }
+        for c in cases:
+            if c.get("input", {}).get("type") != "task":
+                continue
+            kinds = {a.get("kind") for a in c.get("expect", {}).get("assertions", [])}
+            if ({"command_ran", "exit_code"} & kinds) and "execute" not in declared:
+                warnings.append(
+                    f"case '{c.get('id')}': uses command_ran/exit_code but skill declares no "
+                    "'execute' permission — those assertions can never pass"
+                )
+
     return warnings
 
 

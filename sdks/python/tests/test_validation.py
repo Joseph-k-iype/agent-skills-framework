@@ -520,6 +520,24 @@ class TestTestsDirNotAnError:
         warnings = lint_full_skill(tmp)
         assert any("tests" in w for w in warnings)
 
+    def test_lint_warns_on_command_ran_without_execute_permission(self):
+        from skill_sdk.validation import lint_full_skill
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "src").mkdir(parents=True)
+        (tmp / "src" / "main.py").write_text("# placeholder")
+        (tmp / "SKILL.md").write_text(
+            "---\nname: demo\nversion: 1.0.0\nruntime: python\napi_version: 1\n"
+            "entry: src/main.py\ndescription: A demo skill for when you need a demo\n"
+            "permissions:\n  - resource: ws\n    actions: [read, write]\n---\n"
+            "Run a command.")
+        (tmp / "tests").mkdir(exist_ok=True)
+        (tmp / "tests" / "eval_cases.yaml").write_text(json.dumps({"version": 1, "cases": [
+            {"id": "c1", "input": {"type": "task", "prompt": "run a command"},
+             "expect": {"mode": "assertions",
+                        "assertions": [{"kind": "command_ran", "pattern": "ls"}]}}]}))
+        warnings = lint_full_skill(tmp)
+        assert any("c1" in w and "execute" in w for w in warnings)
+
 
 class TestTransitiveCycleDetection:
     class FakeRegistry:

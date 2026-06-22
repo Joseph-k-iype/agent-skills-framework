@@ -72,3 +72,28 @@ def test_evaluate_skill_never_raises_without_eval_extras_installed(monkeypatch):
     # degrade gracefully rather than raising ImportError.
     report = evaluate_skill(tmp)
     assert report.judge_status in ("skipped", "error")
+
+
+def _skill_with_task(tmp: Path):
+    (tmp / "src").mkdir(parents=True)
+    (tmp / "src" / "main.py").write_text("# placeholder")
+    (tmp / "SKILL.md").write_text(
+        "---\nname: demo\nversion: 1.0.0\nruntime: python\napi_version: 1\n"
+        "entry: src/main.py\ndescription: A demo skill for when you need a demo\n"
+        "permissions:\n  - resource: ws\n    actions: [read, write, create, list]\n---\n"
+        "Write out.txt containing the answer.")
+    (tmp / "tests").mkdir(exist_ok=True)
+    (tmp / "tests" / "eval_cases.yaml").write_text(json.dumps({"version": 1, "cases": [
+        {"id": "c1", "input": {"type": "task", "prompt": "produce out.txt"},
+         "expect": {"mode": "assertions",
+                    "assertions": [{"kind": "file_exists", "path": "out.txt"}]}}]}))
+    return tmp
+
+
+def test_evaluate_skill_skips_agent_execution_without_model(monkeypatch):
+    monkeypatch.delenv("SKILLS_EVAL_MODEL", raising=False)
+    skill = _skill_with_task(Path(tempfile.mkdtemp()))
+    report = evaluate_skill(skill, judge="none")
+    # judge none -> agent execution skipped, not crashed
+    assert report.agent_execution is None or report.agent_execution.comparison_mode == "skipped"
+    assert report.judge_status == "skipped"
