@@ -1,0 +1,22 @@
+{
+  "skill_name": "data-lineage",
+  "skill_version": "0.1.0",
+  "run_at": "2026-06-22T03:39:22.161593+00:00",
+  "judge_status": "ok",
+  "judge_skip_reason": null,
+  "structural_errors": [],
+  "structural_warnings": [],
+  "content_critic": {
+    "findings": [],
+    "model": "google_genai:gemini-3.5-flash"
+  },
+  "test_executor": {
+    "results": [],
+    "passed": 0,
+    "failed": 0,
+    "total": 0
+  },
+  "agent_execution": null,
+  "overall_score": 100.0,
+  "summary": "Structural checks passed; content/test judging ok."
+}
