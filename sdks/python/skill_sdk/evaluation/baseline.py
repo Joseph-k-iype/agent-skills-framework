@@ -109,10 +109,11 @@ def _aggregate(
 
 
 def _run_one(skill_path, body, permissions, case, model, *, full_surface, keep):
-    ws = make_workspace(
-        permissions, files=case.get("input", {}).get("files"), skill_path=skill_path
-    )
+    ws = None
     try:
+        ws = make_workspace(
+            permissions, files=case.get("input", {}).get("files"), skill_path=skill_path
+        )
         res = run_agent(
             case["input"]["prompt"],
             ws,
@@ -144,7 +145,8 @@ def _run_one(skill_path, body, permissions, case, model, *, full_surface, keep):
             "error": res.error,
         }
     finally:
-        cleanup(ws, keep=keep)
+        if ws is not None:
+            cleanup(ws, keep=keep)
 
 
 def run_agent_execution(
@@ -164,6 +166,15 @@ def run_agent_execution(
 
     prev = find_previous_version(registry_path, name, version)
     mode = "vs_previous" if prev else "with_without"
+    # Global override: if any task case pins a non-"auto" baseline mode, it wins over
+    # the auto-selected mode for the whole run. AgentExecutionSummary carries a single
+    # comparison_mode, so per-case differing modes are out of scope for v1.
+    override = next(
+        (c.get("baseline") for c in task_cases if c.get("baseline") not in (None, "auto")),
+        None,
+    )
+    if override is not None:
+        mode = override
     prev_body = _skill_body(prev) if prev else ""
     prev_perms = []
     if prev:
