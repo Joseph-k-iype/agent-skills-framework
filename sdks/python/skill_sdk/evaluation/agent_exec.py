@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from .sandbox import Workspace, build_tools
 from .trajectory import RunResult, Trajectory
 
@@ -30,6 +32,7 @@ def run_agent(
 
     traj = Trajectory()
     result = RunResult(workspace_path=str(ws.path), trajectory=traj)
+    t0 = time.monotonic()
     try:
         tools = build_tools(ws, traj, full_surface=full_surface)
         tools_by_name = {t.name: t for t in tools}
@@ -64,3 +67,5 @@ def run_agent(
         result.error = f"{type(e).__name__}: {e}"
         result.permission_violations = ws.violations
         return result
+    finally:
+        traj.duration_ms = int((time.monotonic() - t0) * 1000)

@@ -1,3 +1,4 @@
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -111,3 +112,30 @@ def test_delete_tool_absent_when_not_declared():
     ws = make_workspace(PERMS_FS)  # no "delete"
     tools = {t.name: t for t in build_tools(ws, Trajectory())}
     assert "delete_file" not in tools
+
+
+def test_safe_join_rejects_sibling_prefix_escape():
+    ws = make_workspace(PERMS_FS)
+    # Construct a sibling directory that shares ws.path's basename as a
+    # *prefix* (e.g. ws.path="/tmp/skill-eval-abc", sibling="/tmp/skill-eval-abc-evil").
+    # The old check `str(target).startswith(str(ws.resolve()))` would have
+    # allowed this because the sibling's path string literally starts with
+    # the workspace's path string. The fixed boundary check must reject it.
+    sibling = ws.path.parent / (ws.path.name + "-evil")
+    sibling.mkdir()
+    (sibling / "x.txt").write_text("secret")
+    try:
+        rel = f"../{sibling.name}/x.txt"
+        traj = Trajectory()
+        tools = {t.name: t for t in build_tools(ws, traj)}
+
+        read_out = tools["read_file"].invoke({"path": rel})
+        assert "error" in read_out
+        assert "escapes workspace" in read_out
+
+        write_out = tools["write_file"].invoke({"path": rel, "content": "pwned"})
+        assert "error" in write_out
+        assert "escapes workspace" in write_out
+        assert (sibling / "x.txt").read_text() == "secret"  # untouched
+    finally:
+        shutil.rmtree(sibling, ignore_errors=True)

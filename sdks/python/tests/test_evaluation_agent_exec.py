@@ -61,15 +61,11 @@ def test_run_agent_populates_duration_ms_on_step_cap(monkeypatch):
 
 def test_run_agent_populates_duration_ms_on_exception(monkeypatch):
     ws = make_workspace(PERMS)
-
-    def boom(*args, **kwargs):
-        raise RuntimeError("boom")
-
-    model = FakeToolCallingChatModel(responses=[])
-    monkeypatch.setattr(model, "bind_tools", boom)
+    # model=None has no .bind_tools/.invoke, so the loop raises immediately
+    # and run_agent must fall through to the except branch.
     times = iter([0.0, 0.2])
     monkeypatch.setattr(agent_exec.time, "monotonic", lambda: next(times))
-    res = run_agent("create out.txt", ws, model)
+    res = run_agent("create out.txt", ws, None)
     assert res.error is not None
     assert res.trajectory.duration_ms == 200
 
