@@ -76,3 +76,15 @@ A skill's own `tests/` directory is excluded from its content-hash (see
 changes the skill's published ID. Reference `skills/data-discovery/tests/`
 and `skills/data-discovery/pytest.ini` for the expected layout
 (`testpaths = tests`, `asyncio_mode = auto`).
+
+## Agent-execution eval (task cases)
+
+A `task` case runs a real LLM agent that follows the skill's SKILL.md in a
+temporary, permission-scoped workspace, then grades the workspace + trajectory
+against a baseline (with/without skill, or vs the previous published version).
+
+> **Safety:** the shell sandbox is *pragmatic*, not true isolation — commands run
+> with the working directory locked to a temp workspace, a minimized environment,
+> a timeout, and a destructive-pattern deny-list. A determined command could still
+> affect the host. Only run agent-execution evals on skills you trust, or in a
+> disposable/CI environment. Container-level isolation is a planned upgrade.

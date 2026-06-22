@@ -167,3 +167,27 @@ def test_feedback_rejects_bad_verdict(client):
         },
     )
     assert r.status_code == 400
+
+
+def test_run_endpoint_includes_agent_execution_key(client):
+    _scaffold(client)
+
+    case = {
+        "id": "t1",
+        "input": {"type": "task", "prompt": "create out.txt"},
+        "expect": {
+            "mode": "assertions",
+            "assertions": [{"kind": "file_exists", "path": "out.txt"}],
+        },
+    }
+    r = client.put("/api/skills/eval-skill/evaluation/cases", json={"cases": [case]})
+    assert r.status_code == 200, r.text
+
+    # Use the real evaluate_skill (no monkeypatch) so we verify the report
+    # actually carries the agent_execution section through the run endpoint.
+    r = client.post("/api/skills/eval-skill/evaluation/run", json={"judge": "none"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "agent_execution" in body
+    ae = body["agent_execution"]
+    assert ae is None or ae["comparison_mode"] == "skipped"
