@@ -65,10 +65,14 @@ export default function KnowledgeGraph() {
   const [host, setHost] = useState('localhost')
   const [port, setPort] = useState('6379')
   const [connected, setConnected] = useState(false)
+  // The host/port we actually connected to, so queries hit the same server.
+  const [connectedTo, setConnectedTo] = useState<{ host: string; port: number } | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [capability, setCapability] = useState('')
   const [queryMode, setQueryMode] = useState<'capability' | 'impact' | 'permission'>('capability')
   const [queryResults, setQueryResults] = useState<any[] | null>(null)
+  const [querying, setQuerying] = useState(false)
+  const [graphError, setGraphError] = useState<string | null>(null)
 
   const { data: skills } = useQuery({
     queryKey: ['skills'],
@@ -95,30 +99,55 @@ export default function KnowledgeGraph() {
   }, [layoutNodes, layoutEdges, setNodes, setEdges])
 
   const handleConnect = async () => {
+    setGraphError(null)
+    const portNum = Number(port)
+    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+      setGraphError('Port must be a number between 1 and 65535.')
+      return
+    }
     setConnecting(true)
     try {
-      const result = await api.graph.connect(host, parseInt(port))
+      const result = await api.graph.connect(host.trim() || 'localhost', portNum)
       setConnected(result.connected)
-    } catch {
+      if (result.connected) {
+        setConnectedTo({ host: host.trim() || 'localhost', port: portNum })
+      } else {
+        setGraphError(`Could not connect to FalkorDB at ${host || 'localhost'}:${portNum}.`)
+      }
+    } catch (e) {
       setConnected(false)
+      setGraphError(e instanceof Error ? e.message : 'Connection failed.')
     }
     setConnecting(false)
   }
 
+  const handleDisconnect = () => {
+    setConnected(false)
+    setConnectedTo(null)
+    setQueryResults(null)
+    setGraphError(null)
+  }
+
   const handleQuery = async () => {
-    if (!capability.trim()) return
+    if (!capability.trim() || !connectedTo) return
+    setGraphError(null)
+    setQuerying(true)
     try {
       const result = await api.graph.query(
         queryMode === 'capability'
           ? { capability: capability.trim() }
           : queryMode === 'impact'
             ? { impact_id: capability.trim() }
-            : { permission_resource: capability.trim() }
+            : { permission_resource: capability.trim() },
+        connectedTo.host,
+        connectedTo.port,
       )
       setQueryResults(result.results)
-    } catch {
-      setQueryResults([])
+    } catch (e) {
+      setQueryResults(null)
+      setGraphError(e instanceof Error ? e.message : 'Query failed.')
     }
+    setQuerying(false)
   }
 
   return (
@@ -141,17 +170,22 @@ export default function KnowledgeGraph() {
           <input
             className="input w-32"
             placeholder="Host"
+            aria-label="FalkorDB host"
             value={host}
+            disabled={connected}
             onChange={(e) => setHost(e.target.value)}
           />
           <input
             className="input w-24"
             placeholder="Port"
+            aria-label="FalkorDB port"
+            inputMode="numeric"
             value={port}
+            disabled={connected}
             onChange={(e) => setPort(e.target.value)}
           />
           <button
-            onClick={connected ? () => setConnected(false) : handleConnect}
+            onClick={connected ? handleDisconnect : handleConnect}
             disabled={connecting}
             className={connected ? 'btn-ghost' : 'btn-secondary'}
           >
@@ -170,6 +204,13 @@ export default function KnowledgeGraph() {
           </span>
         )}
       </div>
+
+      {graphError && (
+        <div className="flex items-start gap-2 rounded-lg border border-line bg-canvas p-3 text-sm text-ink-2">
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-bad" />
+          <span className="break-words">{graphError}</span>
+        </div>
+      )}
 
       {connected && (
         <>
@@ -216,11 +257,12 @@ export default function KnowledgeGraph() {
                     : 'Search skills by permission resource...'
               }
               value={capability}
+              aria-label="Graph query input"
               onChange={(e) => setCapability(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
             />
-            <button onClick={handleQuery} className="btn-primary">
-              <Search size={16} /> Query
+            <button onClick={handleQuery} disabled={querying || !capability.trim()} className="btn-primary">
+              <Search size={16} /> {querying ? 'Querying...' : 'Query'}
             </button>
           </div>
 

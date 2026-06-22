@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Clock, CheckCircle2, XCircle, Info } from 'lucide-react'
 import { api } from '../lib/api'
+import ErrorState from '../components/ErrorState'
 import type { AuditEntry } from '../lib/types'
 
 function relativeTime(iso: string): string {
@@ -21,7 +22,7 @@ function relativeTime(iso: string): string {
 export default function AuditLog() {
   const [filter, setFilter] = useState<string>('all')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['audit'],
     queryFn: () => api.audit.list(500),
   })
@@ -71,12 +72,22 @@ export default function AuditLog() {
             <div key={i} className="h-16 animate-pulse rounded bg-canvas" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState error={error} onRetry={refetch} title="Couldn't load audit log" />
       ) : auditLog.length === 0 ? (
         <div className="card py-16 text-center">
           <Clock size={48} className="mx-auto text-ink-3" />
           <p className="mt-4 text-lg font-medium text-ink-2">No audit entries</p>
           <p className="mt-1 text-sm text-ink-3">
             Publish, install, or sync skills to see activity here
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="card py-16 text-center">
+          <Clock size={48} className="mx-auto text-ink-3" />
+          <p className="mt-4 text-lg font-medium text-ink-2">No matching events</p>
+          <p className="mt-1 text-sm text-ink-3">
+            No entries match this filter. Try “All Events”.
           </p>
         </div>
       ) : (

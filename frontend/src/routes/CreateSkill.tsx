@@ -575,7 +575,9 @@ ${manifest.config?.required?.length ? `\nconfig:\n  required:\n${(manifest.confi
           {step < steps.length - 1 ? (
             <button
               onClick={() => setStep(Math.min(steps.length - 1, step + 1))}
-              disabled={hasBasicInfoErrors}
+              // Only the basic-info step (0) can have name/version errors, and they're
+              // surfaced there. Gating later steps would disable Next with no visible reason.
+              disabled={step === 0 && hasBasicInfoErrors}
               className="btn-primary"
             >
               Next <ChevronRight size={16} />

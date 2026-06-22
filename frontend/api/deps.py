@@ -26,7 +26,12 @@ def get_registry() -> RegistryClient:
                 graph = None
                 host = os.environ.get(GRAPH_HOST_ENV)
                 if host:
-                    port = int(os.environ.get(GRAPH_PORT_ENV, 6379))
+                    # A bad SKILLS_GRAPH_PORT must not crash every request that
+                    # touches the registry — fall back to the default port.
+                    try:
+                        port = int(os.environ.get(GRAPH_PORT_ENV, 6379))
+                    except (TypeError, ValueError):
+                        port = 6379
                     graph = FalkorDBConnector(host=host, port=port, enabled=True)
                 client = RegistryClient(get_registry_path(), graph=graph)
                 client.auto_tag = False

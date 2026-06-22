@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { Package, Database, Plus, Search, ArrowUpRight } from 'lucide-react'
 import { api } from '../lib/api'
 import { pluralize, shortHash } from '../lib/utils'
+import ErrorState from '../components/ErrorState'
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: api.dashboard.stats,
   })
@@ -16,15 +17,17 @@ export default function Dashboard() {
         .slice(0, 5)
     : []
 
+  // On error, show "—" rather than a misleading "0" (which reads as "registry empty").
+  const pending = isLoading || isError
   const metrics = [
     {
       label: 'Total Skills',
-      value: isLoading ? '—' : stats?.total_skills ?? 0,
+      value: pending ? '—' : stats?.total_skills ?? 0,
       headline: true,
     },
-    { label: 'Versions', value: isLoading ? '—' : stats?.total_versions ?? 0 },
-    { label: 'Sources', value: isLoading ? '—' : stats?.sources_count ?? 0 },
-    { label: 'Registry', value: isLoading ? '—' : 'Active' },
+    { label: 'Versions', value: pending ? '—' : stats?.total_versions ?? 0 },
+    { label: 'Sources', value: pending ? '—' : stats?.sources_count ?? 0 },
+    { label: 'Registry', value: isLoading ? '—' : isError ? 'Offline' : 'Active' },
   ]
 
   return (
@@ -81,6 +84,8 @@ export default function Dashboard() {
                   <div key={i} className="h-[60px] animate-pulse bg-canvas" />
                 ))}
               </div>
+            ) : isError ? (
+              <ErrorState error={error} onRetry={refetch} title="Couldn't load registry stats" />
             ) : recentSkills.length === 0 ? (
               <div className="px-5 py-12 text-center">
                 <Package size={28} className="mx-auto text-ink-3" />

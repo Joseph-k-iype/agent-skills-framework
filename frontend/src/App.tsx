@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import AppShell from './components/layout/AppShell'
 import ErrorBoundary from './components/ErrorBoundary'
 import Dashboard from './routes/Dashboard'
+import { RoleGate } from './components/RequireRole'
 import { AuthProvider } from './lib/auth'
 
 const SkillCatalog = lazy(() => import('./routes/SkillCatalog'))
@@ -36,12 +37,12 @@ export default function App() {
               <Route path="/skills" element={<SkillCatalog />} />
               <Route path="/skills/new" element={<CreateSkill />} />
               <Route path="/skills/:name" element={<SkillDetail />} />
-              <Route path="/registry" element={<Registry />} />
+              <Route path="/registry" element={<RoleGate minRole="consumer"><Registry /></RoleGate>} />
               <Route path="/graph" element={<KnowledgeGraph />} />
-              <Route path="/governance" element={<Governance />} />
+              <Route path="/governance" element={<RoleGate minRole="governance"><Governance /></RoleGate>} />
               <Route path="/deployments" element={<Deployments />} />
-              <Route path="/audit" element={<AuditLog />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/audit" element={<RoleGate minRole="governance"><AuditLog /></RoleGate>} />
+              <Route path="/settings" element={<RoleGate minRole="admin"><Settings /></RoleGate>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

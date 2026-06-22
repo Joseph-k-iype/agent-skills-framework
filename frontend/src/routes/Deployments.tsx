@@ -2,11 +2,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { GitBranch, Globe, Folder, Package, CheckCircle2, RefreshCw } from 'lucide-react'
 import { api } from '../lib/api'
 import { pluralize, formatDate } from '../lib/utils'
+import ErrorState from '../components/ErrorState'
 
 export default function Deployments() {
   const queryClient = useQueryClient()
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ['deployments'],
     queryFn: api.deployments.list,
   })
@@ -55,6 +56,17 @@ export default function Deployments() {
         ))}
       </div>
 
+      {isError ? (
+        <ErrorState error={error} onRetry={refetch} title="Couldn't load deployments" />
+      ) : !isLoading && targets.length === 0 ? (
+        <div className="card py-16 text-center">
+          <Globe size={48} className="mx-auto text-ink-3" />
+          <p className="mt-4 text-lg font-medium text-ink-2">No deployment targets</p>
+          <p className="mt-1 text-sm text-ink-3">
+            Configure a registry source to see deployment targets here
+          </p>
+        </div>
+      ) : (
       <div className="space-y-3">
         {targets.map((target) => (
           <div key={target.name} className="card">
@@ -109,6 +121,7 @@ export default function Deployments() {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

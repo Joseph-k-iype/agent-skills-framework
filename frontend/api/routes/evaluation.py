@@ -103,11 +103,23 @@ async def run_evaluation(
     skill_dir = _skill_dir_or_404(name, registry)
     registry_path = get_registry_path()
 
-    report = await run_in_threadpool(
-        evaluate_skill, skill_dir, judge=req.judge, registry_path=registry_path
-    )
+    try:
+        report = await run_in_threadpool(
+            evaluate_skill, skill_dir, judge=req.judge, registry_path=registry_path
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Evaluation failed: {e}")
     report_dict = report.to_dict()
-    _write_eval_report(registry_path, report.skill_name, report.skill_version, report_dict)
+    try:
+        _write_eval_report(registry_path, report.skill_name, report.skill_version, report_dict)
+    except OSError as e:
+        # The evaluation succeeded; only persisting the report failed. Still return
+        # the result rather than 500-ing the whole run.
+        audit.record("Skill Evaluated", report.skill_name, report.skill_version,
+                     status="error", details=f"Report not saved: {e}")
+        return report_dict
     audit.record(
         "Skill Evaluated", report.skill_name, report.skill_version,
         details=f"judge={report.judge_status}; score={report.overall_score}",
@@ -133,23 +145,33 @@ def get_latest_evaluation(
 
 
 @router.get("/{name}/evaluation/feedback")
-def get_evaluation_feedback(name: str):
-    return load_feedback(get_registry_path(), name)
+def get_evaluation_feedback(name: str, registry: RegistryClient = Depends(get_registry)):
+    _skill_dir_or_404(name, registry)
+    try:
+        return load_feedback(get_registry_path(), name)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Could not load feedback: {e}")
 
 
 @router.post("/{name}/evaluation/feedback", dependencies=[Depends(require_api_key)])
-def submit_evaluation_feedback(name: str, req: FeedbackRequest):
+def submit_evaluation_feedback(
+    name: str, req: FeedbackRequest, registry: RegistryClient = Depends(get_registry)
+):
     if req.verdict not in ("accepted", "dismissed"):
         raise HTTPException(status_code=400, detail="verdict must be 'accepted' or 'dismissed'")
-    entry = record_feedback(
-        get_registry_path(),
-        name,
-        finding_id=req.finding_id,
-        finding_signature=req.finding_signature,
-        finding_text=req.finding_text,
-        verdict=req.verdict,
-        run_id=req.run_id,
-        verdict_by=req.verdict_by,
-    )
+    _skill_dir_or_404(name, registry)
+    try:
+        entry = record_feedback(
+            get_registry_path(),
+            name,
+            finding_id=req.finding_id,
+            finding_signature=req.finding_signature,
+            finding_text=req.finding_text,
+            verdict=req.verdict,
+            run_id=req.run_id,
+            verdict_by=req.verdict_by,
+        )
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Could not record feedback: {e}")
     audit.record("Eval Finding " + req.verdict.capitalize(), name, details=req.finding_text)
     return {"success": True, "entry": entry}

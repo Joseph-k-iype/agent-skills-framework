@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Package, Search, Grid3X3, List } from 'lucide-react'
 import { api } from '../lib/api'
 import { shortHash, pluralize } from '../lib/utils'
+import ErrorState from '../components/ErrorState'
 
 export default function SkillCatalog() {
   const [searchParams] = useSearchParams()
@@ -17,7 +18,7 @@ export default function SkillCatalog() {
     setQuery(searchParams.get('q') ?? '')
   }, [searchParams])
 
-  const { data: skills, isLoading } = useQuery({
+  const { data: skills, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['skills'],
     queryFn: api.skills.list,
   })
@@ -41,12 +42,16 @@ export default function SkillCatalog() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setView('grid')}
+            aria-label="Grid view"
+            aria-pressed={view === 'grid'}
             className={`btn-ghost p-2 ${view === 'grid' ? 'text-accent-500' : 'text-ink-3'}`}
           >
             <Grid3X3 size={16} />
           </button>
           <button
             onClick={() => setView('list')}
+            aria-label="List view"
+            aria-pressed={view === 'list'}
             className={`btn-ghost p-2 ${view === 'list' ? 'text-accent-500' : 'text-ink-3'}`}
           >
             <List size={16} />
@@ -60,6 +65,7 @@ export default function SkillCatalog() {
           <input
             type="text"
             placeholder="Search by name..."
+            aria-label="Search skills by name"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="input pl-9"
@@ -76,6 +82,8 @@ export default function SkillCatalog() {
             <div key={i} className="card h-28 animate-pulse" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState error={error} onRetry={refetch} title="Couldn't load skills" />
       ) : filtered.length === 0 ? (
         <div className="card py-16 text-center">
           <Package size={48} className="mx-auto text-ink-3" />

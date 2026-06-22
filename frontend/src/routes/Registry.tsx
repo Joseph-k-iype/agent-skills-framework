@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { RequirePermission } from '../components/RequireRole'
+import type { HubSourceConfig } from '../lib/types'
 
 export default function Registry() {
   const queryClient = useQueryClient()
@@ -40,8 +41,7 @@ export default function Registry() {
   })
 
   const addSourceMutation = useMutation({
-    mutationFn: (config: { type: string; url?: string; path?: string; ref: string }) =>
-      api.registry.addSource(config as any),
+    mutationFn: (config: HubSourceConfig) => api.registry.addSource(config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registry-sources'] })
       queryClient.invalidateQueries({ queryKey: ['registry-info'] })
@@ -150,8 +150,13 @@ export default function Registry() {
               </button>
             </div>
             {addSourceMutation.isError && (
-              <p className="flex items-center gap-1.5 text-sm text-ink-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-bad" /> Failed to add source
+              <p className="flex items-start gap-1.5 text-sm text-ink-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-bad" />
+                <span className="break-words">
+                  {addSourceMutation.error instanceof Error
+                    ? addSourceMutation.error.message
+                    : 'Failed to add source'}
+                </span>
               </p>
             )}
             {addSourceMutation.isSuccess && (

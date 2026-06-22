@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 
 export type UserRole = 'admin' | 'developer' | 'consumer' | 'governance' | 'viewer'
 
+const ROLE_STORAGE_KEY = 'skills.role'
+
 interface AuthState {
   role: UserRole
   setRole: (role: UserRole) => void
@@ -27,8 +29,23 @@ const rolePermissions: Record<UserRole, string[]> = {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+function loadRole(): UserRole {
+  if (typeof localStorage === 'undefined') return 'developer'
+  const saved = localStorage.getItem(ROLE_STORAGE_KEY)
+  return saved && saved in roleHierarchy ? (saved as UserRole) : 'developer'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<UserRole>('developer')
+  const [role, setRoleState] = useState<UserRole>(loadRole)
+
+  const setRole = useCallback((next: UserRole) => {
+    setRoleState(next)
+    try {
+      localStorage.setItem(ROLE_STORAGE_KEY, next)
+    } catch {
+      // Persistence is best-effort (e.g. storage disabled); ignore.
+    }
+  }, [])
 
   const can = useCallback(
     (...actions: string[]) => {

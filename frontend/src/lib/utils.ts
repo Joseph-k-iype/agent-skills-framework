@@ -7,6 +7,7 @@ export function shortHash(id: string): string {
 
 export function formatDate(ts: string | number): string {
   const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

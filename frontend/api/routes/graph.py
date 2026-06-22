@@ -32,11 +32,13 @@ class GraphQueryRequest(BaseModel):
 @router.post("/connect")
 async def test_connection(req: GraphConnectRequest):
     graph = FalkorDBConnector(host=req.host, port=req.port, enabled=True)
-    connected = await graph.connect()
-    if connected:
+    try:
+        connected = await graph.connect()
+    except Exception:
+        connected = False
+    finally:
         graph.disconnect()
-        return {"connected": True, "host": req.host, "port": req.port}
-    return {"connected": False, "host": req.host, "port": req.port}
+    return {"connected": bool(connected), "host": req.host, "port": req.port}
 
 
 @router.post("/register", dependencies=[Depends(require_api_key)])
@@ -60,21 +62,24 @@ async def register_skill(req: GraphRegisterRequest):
 
 @router.post("/query")
 async def query_graph(req: GraphQueryRequest):
-    graph = FalkorDBConnector(host=req.host, port=req.port, enabled=True)
-    connected = await graph.connect()
-    if not connected:
-        raise HTTPException(status_code=503, detail="Could not connect to FalkorDB")
-
-    results = []
-    if req.capability:
-        results = graph.find_skills_by_capability(req.capability)
-    elif req.impact_id:
-        results = graph.find_impact(req.impact_id)
-    elif req.permission_resource:
-        results = graph.find_skills_by_permission(req.permission_resource)
-    else:
-        graph.disconnect()
+    if not (req.capability or req.impact_id or req.permission_resource):
         raise HTTPException(status_code=400, detail="Provide capability, impact_id, or permission_resource")
 
-    graph.disconnect()
-    return {"results": results}
+    graph = FalkorDBConnector(host=req.host, port=req.port, enabled=True)
+    try:
+        connected = await graph.connect()
+        if not connected:
+            raise HTTPException(status_code=503, detail="Could not connect to FalkorDB")
+        if req.capability:
+            results = graph.find_skills_by_capability(req.capability)
+        elif req.impact_id:
+            results = graph.find_impact(req.impact_id)
+        else:
+            results = graph.find_skills_by_permission(req.permission_resource)
+        return {"results": results}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Graph query failed: {e}")
+    finally:
+        graph.disconnect()

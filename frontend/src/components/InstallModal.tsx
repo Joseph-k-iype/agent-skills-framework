@@ -81,6 +81,7 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
               <select
                 value={selectedVersion}
                 onChange={(e) => setSelectedVersion(e.target.value)}
+                aria-label="Version to install"
                 className="input"
               >
                 {versions.map((v) => (
@@ -97,6 +98,7 @@ export default function InstallModal({ open, onClose, skillName, versions, lates
                 type="text"
                 value={targetPath}
                 onChange={(e) => setTargetPath(e.target.value)}
+                aria-label="Target install path"
                 className="input font-mono text-sm"
               />
               <p className="mt-1 text-xs text-ink-3">Relative to the server workspace root.</p>

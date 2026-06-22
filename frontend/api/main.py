@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -16,10 +17,22 @@ app = FastAPI(
     description="API for the Agent Skills Framework — manage, validate, build, publish, and install enterprise agent skills",
 )
 
+# Origins are configurable for hosted deployments via SKILLS_CORS_ORIGINS
+# (comma-separated). Defaults cover the local Vite dev server on its usual ports
+# (5173, and 5174 when 5173 is taken). Credentials are not used (auth is a header
+# API key, not a cookie), so we keep allow_credentials off and never need "*".
+_env_origins = os.environ.get("SKILLS_CORS_ORIGINS", "")
+_allow_origins = [o.strip() for o in _env_origins.split(",") if o.strip()] or [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
+    allow_origins=_allow_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

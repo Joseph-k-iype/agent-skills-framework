@@ -141,10 +141,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ host, port, manifest_path: manifestPath }),
       }),
-    query: (params: { capability?: string; impact_id?: string; permission_resource?: string }) =>
+    query: (
+      params: { capability?: string; impact_id?: string; permission_resource?: string },
+      host = 'localhost',
+      port = 6379,
+    ) =>
       fetchJSON<import('./types').GraphQueryResult>('/graph/query', {
         method: 'POST',
-        body: JSON.stringify({ ...params, host: 'localhost', port: 6379 }),
+        body: JSON.stringify({ ...params, host, port }),
       }),
   },
 }

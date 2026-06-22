@@ -48,6 +48,24 @@ class ScaffoldRequest(BaseModel):
     force: bool = False
 
 
+# Scaffold guardrails: a single call must not write outside the new skill dir,
+# overwrite sibling skills, or exhaust disk.
+MAX_SCAFFOLD_FILES = 50
+MAX_SCAFFOLD_FILE_BYTES = 1_000_000  # 1 MB per file
+
+
+def _safe_child(base: Path, rel: str) -> Path:
+    """Resolve ``rel`` strictly under ``base``; reject traversal/absolute paths."""
+    if not rel or not str(rel).strip() or "\x00" in str(rel):
+        raise HTTPException(status_code=400, detail=f"Invalid file path: {rel!r}")
+    candidate = (base / rel).resolve()
+    if candidate != base and base not in candidate.parents:
+        raise HTTPException(
+            status_code=400, detail=f"Path '{rel}' escapes the skill directory"
+        )
+    return candidate
+
+
 def _manifest_path(skill_dir: Path) -> Path | None:
     for fname in ("SKILL.md", "skill.yaml", "skill.yml", "skill.json"):
         p = skill_dir / fname
@@ -144,7 +162,7 @@ def get_skill_manifest(name: str, registry: RegistryClient = Depends(get_registr
         manifest, body = load_manifest_with_body(manifest_path)
         raw = manifest_path.read_text(encoding="utf-8")
         return {"manifest": manifest, "body": body, "raw": raw}
-    except ValidationError as e:
+    except (ValidationError, OSError, UnicodeDecodeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -186,7 +204,10 @@ def update_skill_doc(
             status_code=400, detail="Documentation editing requires SKILL.md format"
         )
 
-    raw = manifest_path.read_text(encoding="utf-8")
+    try:
+        raw = manifest_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=400, detail=f"Could not read manifest: {e}")
     # Locate the frontmatter block exactly as _parse_frontmatter does: the closing
     # delimiter is the first line equal to "---" after the opening one. Splicing the
     # raw frontmatter back (rather than re-dumping the parsed YAML) preserves field
@@ -246,6 +267,10 @@ def validate_skill(name: str, registry: RegistryClient = Depends(get_registry)):
 
 @router.post("/{name}/verify")
 def verify_skill(name: str, version: str | None = None, registry: RegistryClient = Depends(get_registry)):
+    # Unknown skill → 404 (registry.verify would otherwise return a 200 with
+    # valid=false, which the frontend can't distinguish from a real verify failure).
+    # A known skill with a bad version or hash mismatch still returns 200 valid=false.
+    _skill_dir_or_404(name, registry)
     return registry.verify(name, version)
 
 
@@ -283,8 +308,13 @@ def build_skill(req: BuildRequest):
     manifest_path = _manifest_path(target)
     if not manifest_path:
         raise HTTPException(status_code=404, detail="No manifest found")
-    manifest = load_manifest(manifest_path)
-    skill_id = compute_skill_id(manifest, target)
+    # validate_full_skill passed, but loading/hashing can still raise on I/O or a
+    # file changed between validation and hashing — return a clean 400, not a 500.
+    try:
+        manifest = load_manifest(manifest_path)
+        skill_id = compute_skill_id(manifest, target)
+    except (ValidationError, OSError, ValueError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {
         "success": True,
         "name": manifest["name"],
@@ -330,7 +360,23 @@ def scaffold_skill(req: ScaffoldRequest, registry: RegistryClient = Depends(get_
     manifest["entry"] = entry
     runtime = manifest.get("runtime", "python")
 
-    entry_path = resolve_in_workspace(str(Path(name) / entry))
+    # Confine the entry and every extra file strictly under the new skill dir so a
+    # crafted "../other-skill/..." path can't overwrite siblings or escape upward.
+    extra_files = req.files or {}
+    if len(extra_files) > MAX_SCAFFOLD_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files (max {MAX_SCAFFOLD_FILES})",
+        )
+    for rel, content in extra_files.items():
+        if len(content.encode("utf-8")) > MAX_SCAFFOLD_FILE_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{rel}' exceeds the {MAX_SCAFFOLD_FILE_BYTES}-byte limit",
+            )
+
+    entry_path = _safe_child(dest, entry)
+    safe_files = [(_safe_child(dest, rel), content) for rel, content in extra_files.items()]
 
     if req.force:
         dest.mkdir(parents=True, exist_ok=True)
@@ -344,8 +390,7 @@ def scaffold_skill(req: ScaffoldRequest, registry: RegistryClient = Depends(get_
     if not entry_path.exists():
         entry_path.write_text(_entry_stub(name, runtime), encoding="utf-8")
 
-    for rel, content in (req.files or {}).items():
-        fp = resolve_in_workspace(str(Path(name) / rel))
+    for fp, content in safe_files:
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(content, encoding="utf-8")
 
