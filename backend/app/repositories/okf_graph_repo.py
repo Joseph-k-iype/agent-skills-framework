@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.graph import client
-from app.graph import vector
+from app.graph import client, vector
 from app.graph.cypher import okf as Q
 
 
@@ -69,7 +68,9 @@ class OkfGraphRepository:
         return d
 
     def list_documents(self, *, workspace_id: str | None, limit: int = 200) -> list[dict]:
-        rows = _rows(client.ro_query(Q.LIST_DOCUMENTS, {"workspace_id": workspace_id, "limit": limit}))
+        rows = _rows(
+            client.ro_query(Q.LIST_DOCUMENTS, {"workspace_id": workspace_id, "limit": limit})
+        )
         out = []
         for r in rows:
             d = client.node_to_dict(r[0])

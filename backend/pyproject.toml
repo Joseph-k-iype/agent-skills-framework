@@ -41,6 +41,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI's Depends()/Query() in argument defaults is the documented idiom.
+# UP046: keep Generic[T] form for pydantic v2 compatibility.
+ignore = ["UP046", "B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

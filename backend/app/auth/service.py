@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,7 +106,7 @@ class AuthService:
             raise UnauthorizedError("User inactive")
 
         # rotate: revoke the old session, mint a new pair
-        await self.repo.revoke_session(session, datetime.now(timezone.utc))
+        await self.repo.revoke_session(session, datetime.now(UTC))
         perms = permissions_for(user.role.name)
         access = create_access_token(str(user.id), user.role.name, perms)
         new_refresh, exp = create_refresh_token(str(user.id))

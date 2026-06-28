@@ -37,5 +37,10 @@ class AuditService:
         )
         await publish(
             action,
-            {"resource_id": resource_id, "workspace_id": workspace_id, "actor": actor_id, **payload},
+            {
+                "resource_id": resource_id,
+                "workspace_id": workspace_id,
+                "actor": actor_id,
+                **payload,
+            },
         )

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +25,7 @@ from app.services.audit_service import AuditService
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _new_id() -> str:
@@ -164,7 +164,9 @@ class WorkspaceService:
         self.repo.set_folder_path(id=folder_id, path=new_path, ts=ts)
         for d in descendants:
             d_path = d.get("path") or ""
-            suffix = d_path[len(old_prefix):] if d_path.startswith(old_prefix) else f"/{d.get('name')}"
+            suffix = (
+                d_path[len(old_prefix) :] if d_path.startswith(old_prefix) else f"/{d.get('name')}"
+            )
             self.repo.set_folder_path(id=d["id"], path=f"{new_path}{suffix}", ts=ts)
 
     async def rename_folder(self, folder_id: str, body: FolderUpdate) -> FolderOut:

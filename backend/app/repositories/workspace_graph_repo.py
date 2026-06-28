@@ -18,7 +18,9 @@ def _rows(result) -> list[list[Any]]:
 
 class WorkspaceGraphRepository:
     # ── workspaces ──
-    def create_workspace(self, *, id: str, name: str, description: str | None, owner: str, ts: str) -> dict:
+    def create_workspace(
+        self, *, id: str, name: str, description: str | None, owner: str, ts: str
+    ) -> dict:
         res = client.query(
             Q.CREATE_WORKSPACE,
             {"id": id, "name": name, "description": description, "owner": owner, "ts": ts},
@@ -33,9 +35,13 @@ class WorkspaceGraphRepository:
         rows = _rows(client.ro_query(Q.GET_WORKSPACE, {"id": id}))
         return client.node_to_dict(rows[0][0]) if rows else None
 
-    def update_workspace(self, *, id: str, name: str | None, description: str | None, ts: str) -> dict | None:
+    def update_workspace(
+        self, *, id: str, name: str | None, description: str | None, ts: str
+    ) -> dict | None:
         rows = _rows(
-            client.query(Q.UPDATE_WORKSPACE, {"id": id, "name": name, "description": description, "ts": ts})
+            client.query(
+                Q.UPDATE_WORKSPACE, {"id": id, "name": name, "description": description, "ts": ts}
+            )
         )
         return client.node_to_dict(rows[0][0]) if rows else None
 
@@ -111,5 +117,7 @@ class WorkspaceGraphRepository:
         return bool(rows and rows[0][0])
 
     def move_folder(self, *, id: str, new_parent_id: str, ts: str) -> dict | None:
-        rows = _rows(client.query(Q.MOVE_FOLDER, {"id": id, "new_parent_id": new_parent_id, "ts": ts}))
+        rows = _rows(
+            client.query(Q.MOVE_FOLDER, {"id": id, "new_parent_id": new_parent_id, "ts": ts})
+        )
         return client.node_to_dict(rows[0][0]) if rows else None

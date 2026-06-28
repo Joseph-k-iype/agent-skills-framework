@@ -46,7 +46,7 @@ def _resolve_one(raw, doc, by_id, by_title, by_path):
     candidates = [raw, raw.removesuffix(".md"), _slug(raw)]
     # markdown relative path resolved against the doc's directory
     parent = PurePosixPath(doc.relative_path).parent
-    joined = str((parent / raw)).lstrip("./")
+    joined = str(parent / raw).lstrip("./")
     candidates += [joined, joined.removesuffix(".md"), PurePosixPath(raw).stem]
     for c in candidates:
         if c in by_id:

@@ -120,10 +120,14 @@ class SkillGraphRepository:
             client.query(Q.ADD_CAPABILITY, {"id": id, "name": name, "ts": ts})
 
     # versioning
-    def create_version(self, *, old_id: str, new_id: str, version: str, skill_key: str, ts: str) -> dict | None:
+    def create_version(
+        self, *, old_id: str, new_id: str, version: str, skill_key: str, ts: str
+    ) -> dict | None:
         client.query(Q.CLEAR_CURRENT, {"skill_key": skill_key})
         rows = _rows(
-            client.query(Q.CREATE_VERSION, {"old_id": old_id, "id": new_id, "version": version, "ts": ts})
+            client.query(
+                Q.CREATE_VERSION, {"old_id": old_id, "id": new_id, "version": version, "ts": ts}
+            )
         )
         client.query(Q.COPY_EDGES, {"old_id": old_id, "new_id": new_id})
         return _skill(rows[0][0]) if rows else None

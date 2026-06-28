@@ -8,7 +8,7 @@ Embeddings are content-hash deduped so unchanged documents are not re-embedded.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.logging import get_logger
@@ -22,7 +22,7 @@ log = get_logger("okf")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _hash(text: str) -> str:

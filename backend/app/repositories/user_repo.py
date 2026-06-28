@@ -21,14 +21,10 @@ class UserRepository:
         ).scalar_one_or_none()
 
     async def get_by_id(self, user_id: uuid.UUID) -> User | None:
-        return (
-            await self.db.execute(select(User).where(User.id == user_id))
-        ).scalar_one_or_none()
+        return (await self.db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
 
     async def get_role_by_name(self, name: str) -> Role | None:
-        return (
-            await self.db.execute(select(Role).where(Role.name == name))
-        ).scalar_one_or_none()
+        return (await self.db.execute(select(Role).where(Role.name == name))).scalar_one_or_none()
 
     async def upsert_ldap_user(
         self, username: str, full_name: str | None, ldap_dn: str, role: Role

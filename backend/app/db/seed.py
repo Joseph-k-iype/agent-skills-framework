@@ -53,9 +53,7 @@ async def _seed_roles(db: AsyncSession, perms: dict[str, Permission]) -> dict[st
 
 async def _seed_dev_admin(db: AsyncSession, roles: dict[str, Role]) -> None:
     username = settings.dev_admin_username
-    user = (
-        await db.execute(select(User).where(User.username == username))
-    ).scalar_one_or_none()
+    user = (await db.execute(select(User).where(User.username == username))).scalar_one_or_none()
     admin_role = roles[RoleName.ADMIN]
     if user is None:
         db.add(

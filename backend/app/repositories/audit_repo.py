@@ -41,6 +41,8 @@ class AuditRepository:
     async def recent(self, limit: int = 100) -> list[AuditLog]:
         return list(
             (
-                await self.db.execute(select(AuditLog).order_by(desc(AuditLog.occurred_at)).limit(limit))
+                await self.db.execute(
+                    select(AuditLog).order_by(desc(AuditLog.occurred_at)).limit(limit)
+                )
             ).scalars()
         )

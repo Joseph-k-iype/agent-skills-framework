@@ -22,7 +22,11 @@ def subscribe(handler: Handler) -> None:
 
 
 async def publish(event_type: str, payload: dict) -> None:
-    log.info("event", event_type=event_type, **{k: payload.get(k) for k in ("resource_id", "workspace_id")})
+    log.info(
+        "event",
+        event_type=event_type,
+        **{k: payload.get(k) for k in ("resource_id", "workspace_id")},
+    )
     for handler in _handlers:
         try:
             await handler(event_type, payload)

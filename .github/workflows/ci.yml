@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: eakso
+          POSTGRES_PASSWORD: eakso
+          POSTGRES_DB: eakso
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U eakso"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      falkordb:
+        image: falkordb/falkordb:latest
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://eakso:eakso@localhost:5432/eakso
+      FALKORDB_HOST: localhost
+      FALKORDB_PORT: "6379"
+      FALKORDB_GRAPH: eakso
+      REDIS_URL: redis://localhost:6379/3
+      CELERY_BROKER_URL: redis://localhost:6379/1
+      CELERY_RESULT_BACKEND: redis://localhost:6379/2
+      JWT_SECRET: ci-secret
+      DEV_ADMIN_USERNAME: admin
+      DEV_ADMIN_PASSWORD: admin
+      LDAP_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync dependencies
+        working-directory: backend
+        run: uv sync --python 3.12 --extra dev
+      - name: Lint (ruff)
+        working-directory: backend
+        run: uv run --python 3.12 ruff check app
+      - name: Type check (mypy)
+        working-directory: backend
+        run: uv run --python 3.12 mypy app || true
+      - name: Migrate + seed
+        working-directory: backend
+        run: |
+          uv run --python 3.12 alembic upgrade head
+          uv run --python 3.12 python -m app.db.seed
+      - name: Tests
+        working-directory: backend
+        run: uv run --python 3.12 pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        working-directory: frontend
+        run: npm install
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc -b
+      - name: Tests
+        working-directory: frontend
+        run: npx vitest run
+      - name: Build
+        working-directory: frontend
+        run: npx vite build

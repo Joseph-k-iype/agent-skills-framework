@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +26,7 @@ _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _new_id() -> str:
@@ -85,7 +85,9 @@ class SkillService:
         )
         return self.get(node["id"])
 
-    def list(self, *, workspace_id: str | None, folder_id: str | None, q: str | None) -> list[SkillOut]:
+    def list(
+        self, *, workspace_id: str | None, folder_id: str | None, q: str | None
+    ) -> list[SkillOut]:
         nodes = self.repo.list_current(workspace_id=workspace_id, folder_id=folder_id, q=q)
         return [SkillOut(**n) for n in nodes]
 

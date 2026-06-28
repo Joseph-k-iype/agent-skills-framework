@@ -46,11 +46,17 @@ MATCH (n {id:$id})
 OPTIONAL MATCH (n)-[r]->(m)
 WHERE m:OKFDocument OR m:Skill OR m:Folder OR m:Capability
 RETURN n,
-  collect(DISTINCT {rel:type(r), dir:'out', id:m.id, label:coalesce(m.title, m.name), kind:labels(m)[0]}) AS outgoing
+  collect(DISTINCT {
+    rel:type(r), dir:'out', id:m.id,
+    label:coalesce(m.title, m.name), kind:labels(m)[0]
+  }) AS outgoing
 """
 
 INCOMING = """
 MATCH (m)-[r]->(n {id:$id})
 WHERE m:OKFDocument OR m:Skill OR m:Folder OR m:Capability
-RETURN collect(DISTINCT {rel:type(r), dir:'in', id:m.id, label:coalesce(m.title, m.name), kind:labels(m)[0]}) AS incoming
+RETURN collect(DISTINCT {
+  rel:type(r), dir:'in', id:m.id,
+  label:coalesce(m.title, m.name), kind:labels(m)[0]
+}) AS incoming
 """
