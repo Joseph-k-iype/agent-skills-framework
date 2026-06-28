@@ -7,20 +7,24 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt operates on at most 72 bytes; longer inputs are truncated by spec.
+_BCRYPT_MAX = 72
 
 
 def hash_password(raw: str) -> str:
-    return _pwd.hash(raw)
+    return bcrypt.hashpw(raw.encode()[:_BCRYPT_MAX], bcrypt.gensalt()).decode()
 
 
 def verify_password(raw: str, hashed: str) -> bool:
-    return _pwd.verify(raw, hashed)
+    try:
+        return bcrypt.checkpw(raw.encode()[:_BCRYPT_MAX], hashed.encode())
+    except ValueError:
+        return False
 
 
 def hash_token(token: str) -> str:
