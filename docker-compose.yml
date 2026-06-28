@@ -1,0 +1,43 @@
+# Only the two data services run as Docker images.
+# Backend, Celery worker/beat, and frontend run natively (see Makefile):
+#   - backend / celery -> uv run (Python 3.12)
+#   - frontend          -> npm run dev
+#
+# FalkorDB is a Redis module: it serves the knowledge graph (GRAPH.* on db 0)
+# AND doubles as the Redis broker/result-backend/cache for Celery (db 1/2/3).
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eakso}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eakso}
+      POSTGRES_DB: ${POSTGRES_DB:-eakso}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eakso}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  falkordb:
+    image: falkordb/falkordb:latest
+    restart: unless-stopped
+    command: ["--save", "60", "1"]
+    ports:
+      - "6379:6379"   # Redis protocol (graph + celery + cache)
+      - "3001:3000"   # FalkorDB browser UI (optional)
+    volumes:
+      - falkordata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  falkordata:

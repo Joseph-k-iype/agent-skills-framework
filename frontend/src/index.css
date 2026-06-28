@@ -1,0 +1,31 @@
+:root {
+  --eakso-canvas: #fafaf8;
+  --eakso-ink: #111114;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--eakso-canvas);
+  color: var(--eakso-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tighten default heading rhythm toward a typographic, editorial feel */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.012em;
+}
