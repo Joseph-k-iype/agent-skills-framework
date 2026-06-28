@@ -57,6 +57,23 @@ export function useNeighborhood(nodeId: string | null) {
   });
 }
 
+export interface OkfDocSummary {
+  id: string;
+  title: string;
+  type: string;
+  relative_path?: string;
+}
+
+export function useDocuments(workspaceId?: string) {
+  return useQuery({
+    queryKey: ["knowledge-docs", workspaceId ?? "all"],
+    queryFn: () =>
+      unwrap<OkfDocSummary[]>(
+        http.get("/knowledge/documents", { params: workspaceId ? { workspace_id: workspaceId } : {} }),
+      ),
+  });
+}
+
 export function useImportOkf() {
   return useMutation({
     mutationFn: (body: { source_repository: string; workspace_id?: string; folder_id?: string }) =>

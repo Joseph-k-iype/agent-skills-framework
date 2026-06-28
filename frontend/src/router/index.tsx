@@ -7,6 +7,8 @@ const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/DashboardPage"));
 const WorkspacePage = lazy(() => import("@/features/workspace/pages/WorkspacePage"));
 const KnowledgeGraphPage = lazy(() => import("@/features/knowledge/pages/KnowledgeGraphPage"));
+const SkillsPage = lazy(() => import("@/features/skills/pages/SkillsPage"));
+const SkillEditorPage = lazy(() => import("@/features/skills/pages/SkillEditorPage"));
 
 const S = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
@@ -20,7 +22,8 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: S(<DashboardPage />) },
       { path: "workspace", element: S(<WorkspacePage />) },
       { path: "knowledge", element: S(<KnowledgeGraphPage />) },
-      { path: "skills", element: <Placeholder eyebrow="Skills" title="Skills" phase="Phase 3" /> },
+      { path: "skills", element: S(<SkillsPage />) },
+      { path: "skills/:id", element: S(<SkillEditorPage />) },
       { path: "marketplace", element: <Placeholder eyebrow="Marketplace" title="Marketplace" phase="Phase 7" /> },
       {
         path: "admin/users",
