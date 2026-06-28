@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { antdTheme } from "./app/theme/antdTheme";
 import { QueryProvider } from "./app/providers/QueryProvider";
+import { AuthProvider } from "./app/providers/AuthProvider";
 import { router } from "./router";
 import "@xyflow/react/dist/style.css";
 import "./index.css";
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ConfigProvider theme={antdTheme}>
       <AntApp>
         <QueryProvider>
-          <RouterProvider router={router} />
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
         </QueryProvider>
       </AntApp>
     </ConfigProvider>

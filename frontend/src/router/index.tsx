@@ -1,17 +1,50 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { Placeholder } from "@/shared/components/Placeholder";
+import { RequireAuth, RequireRole } from "./RequireAuth";
 
-const SystemStatusPage = lazy(() => import("@/features/system/SystemStatusPage"));
+const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
+const DashboardPage = lazy(() => import("@/features/dashboard/pages/DashboardPage"));
 
-function withSuspense(node: React.ReactNode) {
-  return <Suspense fallback={null}>{node}</Suspense>;
-}
+const S = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
-/**
- * Router shell. Auth-gated layouts (Consumer/Developer/Admin) are introduced in
- * the auth phase; for now the status page validates end-to-end wiring.
- */
 export const router = createBrowserRouter([
-  { path: "/status", element: withSuspense(<SystemStatusPage />) },
-  { path: "*", element: <Navigate to="/status" replace /> },
+  { path: "/login", element: S(<LoginPage />) },
+  {
+    path: "/",
+    element: <RequireAuth />,
+    children: [
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "dashboard", element: S(<DashboardPage />) },
+      { path: "workspace", element: <Placeholder eyebrow="Authoring" title="Workspace" phase="Phase 1" /> },
+      { path: "knowledge", element: <Placeholder eyebrow="Knowledge" title="Knowledge Graph" phase="Phase 2" /> },
+      { path: "skills", element: <Placeholder eyebrow="Skills" title="Skills" phase="Phase 3" /> },
+      { path: "marketplace", element: <Placeholder eyebrow="Marketplace" title="Marketplace" phase="Phase 7" /> },
+      {
+        path: "admin/users",
+        element: (
+          <RequireRole allow={["admin"]}>
+            <Placeholder eyebrow="Administration" title="Users" phase="a later phase" />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/roles",
+        element: (
+          <RequireRole allow={["admin"]}>
+            <Placeholder eyebrow="Administration" title="Roles" phase="a later phase" />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "admin/audit",
+        element: (
+          <RequireRole allow={["admin"]}>
+            <Placeholder eyebrow="Administration" title="Audit Log" phase="a later phase" />
+          </RequireRole>
+        ),
+      },
+    ],
+  },
+  { path: "*", element: <Navigate to="/dashboard" replace /> },
 ]);
