@@ -53,6 +53,16 @@ def ping() -> bool:
         return False
 
 
+def node_to_dict(node: Any) -> dict[str, Any]:
+    """Normalize a FalkorDB node (or already-dict) to a plain properties dict."""
+    if node is None:
+        return {}
+    if isinstance(node, dict):
+        return dict(node)
+    props = getattr(node, "properties", None)
+    return dict(props) if props is not None else dict(node)
+
+
 def reset_client() -> None:
     """Drop the cached client (used by tests)."""
     global _db

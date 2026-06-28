@@ -5,6 +5,7 @@ import { RequireAuth, RequireRole } from "./RequireAuth";
 
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/DashboardPage"));
+const WorkspacePage = lazy(() => import("@/features/workspace/pages/WorkspacePage"));
 
 const S = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
@@ -16,7 +17,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: S(<DashboardPage />) },
-      { path: "workspace", element: <Placeholder eyebrow="Authoring" title="Workspace" phase="Phase 1" /> },
+      { path: "workspace", element: S(<WorkspacePage />) },
       { path: "knowledge", element: <Placeholder eyebrow="Knowledge" title="Knowledge Graph" phase="Phase 2" /> },
       { path: "skills", element: <Placeholder eyebrow="Skills" title="Skills" phase="Phase 3" /> },
       { path: "marketplace", element: <Placeholder eyebrow="Marketplace" title="Marketplace" phase="Phase 7" /> },
