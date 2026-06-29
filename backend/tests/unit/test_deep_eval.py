@@ -76,4 +76,22 @@ async def test_generates_cases_and_scores_effectiveness():
 async def test_report_serializes():
     report = await DeepEvaluator(provider=FakeChatProvider()).evaluate(SKILL, n_cases=1)
     d = report.to_dict()
-    assert set(d) >= {"available", "cases", "effectiveness_avg", "win_rate", "summary"}
+    assert set(d) >= {"available", "cases", "effectiveness_avg", "win_rate", "summary", "skipped"}
+
+
+class RateLimitedProvider(FakeChatProvider):
+    """Generates cases but returns None for the answer/judge calls (rate-limited)."""
+
+    async def chat(self, system: str, user: str) -> str | None:
+        if "generate evaluation" in system:
+            return await super().chat(system, user)
+        return None  # simulate 429 → answer/judge fail
+
+
+@pytest.mark.asyncio
+async def test_failed_calls_are_skipped_not_scored_zero():
+    report = await DeepEvaluator(provider=RateLimitedProvider()).evaluate(SKILL, n_cases=2)
+    assert report.available is True
+    assert report.cases == []  # nothing scored
+    assert report.skipped == 2  # both cases skipped, not scored 0
+    assert report.effectiveness_avg == 0.0

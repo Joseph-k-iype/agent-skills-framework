@@ -181,6 +181,7 @@ export interface DeepEvalReport {
   available: boolean;
   reason?: string | null;
   cases: DeepCase[];
+  skipped: number;
   effectiveness_avg: number;
   win_rate: number;
   with_avg: number;

@@ -78,6 +78,7 @@ class DeepEvalReport:
     available: bool
     reason: str | None = None
     cases: list[DeepCase] = field(default_factory=list)
+    skipped: int = 0  # cases dropped due to provider errors / rate limits
     effectiveness_avg: float = 0.0  # avg(with - without)
     win_rate: float = 0.0  # fraction of cases where with > without
     with_avg: float = 0.0
@@ -105,16 +106,25 @@ class DeepEvaluator:
 
         cases = await self._generate_cases(concept, n_cases)
         results: list[DeepCase] = []
+        skipped = 0
         for spec in cases:
             scenario = str(spec.get("scenario", "")).strip()
             if not scenario:
                 continue
-            without = await self.provider.chat(_PLAIN_SYSTEM, scenario) or ""
-            with_ = await self.provider.chat(_skill_system(concept), scenario) or ""
-            verdict = await self.provider.chat(
-                _JUDGE_SYSTEM, _judge_user(scenario, without, with_)
+            without = await self.provider.chat(_PLAIN_SYSTEM, scenario)
+            with_ = await self.provider.chat(_skill_system(concept), scenario)
+            # A failed/rate-limited call returns None — don't score it 0 (that
+            # would falsely look like a regression). Skip and report it instead.
+            if without is None or with_ is None:
+                skipped += 1
+                continue
+            verdict = self._parse_verdict(
+                await self.provider.chat(_JUDGE_SYSTEM, _judge_user(scenario, without, with_))
             )
-            with_score, without_score, note = self._parse_verdict(verdict)
+            if verdict is None:
+                skipped += 1
+                continue
+            with_score, without_score, note = verdict
             results.append(
                 DeepCase(
                     scenario=scenario,
@@ -126,7 +136,7 @@ class DeepEvaluator:
                 )
             )
 
-        return self._aggregate(results)
+        return self._aggregate(results, skipped)
 
     async def _generate_cases(self, concept: Concept, n_cases: int) -> list[dict]:
         prompt = (
@@ -141,21 +151,27 @@ class DeepEvaluator:
             log.warning("deep_eval_case_parse_failed", error=str(exc))
             return []
 
-    def _parse_verdict(self, raw: str | None) -> tuple[float, float, str | None]:
+    def _parse_verdict(self, raw: str | None) -> tuple[float, float, str | None] | None:
         try:
             obj = _extract_json(raw or "", "{", "}")
             with_score = float(obj.get("with_score", 0))
             without_score = float(obj.get("without_score", 0))
             return with_score, without_score, obj.get("note")
         except Exception:
-            return 0.0, 0.0, None
+            return None
 
-    def _aggregate(self, cases: list[DeepCase]) -> DeepEvalReport:
+    def _aggregate(self, cases: list[DeepCase], skipped: int = 0) -> DeepEvalReport:
         if not cases:
+            note = (
+                f" ({skipped} case(s) skipped due to provider errors / rate limits)"
+                if skipped
+                else ""
+            )
             return DeepEvalReport(
                 available=True,
+                skipped=skipped,
                 cases=[],
-                summary="No usable test cases were produced.",
+                summary=f"No usable test cases completed.{note}",
             )
         n = len(cases)
         with_avg = round(sum(c.with_score for c in cases) / n, 2)
@@ -169,13 +185,15 @@ class DeepEvaluator:
             verdict = "no clear improvement on"
         else:
             verdict = "regresses"
+        skip_note = f" ({skipped} skipped due to rate limits)" if skipped else ""
         summary = (
-            f"The skill {verdict} answers: +{eff} avg over {n} cases, "
-            f"winning {wins}/{n} (with {with_avg} vs without {without_avg})."
+            f"The skill {verdict} answers: {eff:+} avg over {n} scored case(s), "
+            f"winning {wins}/{n} (with {with_avg} vs without {without_avg}){skip_note}."
         )
         return DeepEvalReport(
             available=True,
             cases=cases,
+            skipped=skipped,
             effectiveness_avg=eff,
             win_rate=win_rate,
             with_avg=with_avg,

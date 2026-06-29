@@ -45,3 +45,19 @@ def test_unknown_provider_falls_back_to_local(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "does-not-exist", raising=False)
     p = get_provider()
     assert p.name == "local"
+
+
+def test_auto_selects_keyed_provider(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "auto", raising=False)
+    monkeypatch.setattr(settings, "openrouter_api_key", "sk-test", raising=False)
+    p = get_provider()
+    assert p.name == "openrouter"
+    assert p.has_chat is True
+
+
+def test_auto_falls_back_to_local_without_keys(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "auto", raising=False)
+    monkeypatch.setattr(settings, "openrouter_api_key", "", raising=False)
+    monkeypatch.setattr(settings, "anthropic_api_key", "", raising=False)
+    monkeypatch.setattr(settings, "openai_api_key", "", raising=False)
+    assert get_provider().name == "local"

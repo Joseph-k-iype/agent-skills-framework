@@ -67,16 +67,18 @@ class Settings(BaseSettings):
     ldap_group_base_dn: str = ""
     ldap_group_role_map: dict[str, str] = {}
 
-    # LLM provider — pluggable. "local" works fully offline (hash embeddings,
-    # rules-only evals). Other providers light up when their key is set.
-    llm_provider: str = "local"  # local | openrouter | anthropic | openai
+    # LLM provider — pluggable. "auto" (default) picks a configured provider from
+    # the keys below (OpenRouter → Anthropic → OpenAI), else falls back to the
+    # offline "local" provider (hash embeddings, rules-only evals). Set an explicit
+    # value to pin it; "local" forces offline even when a key is present.
+    llm_provider: str = "auto"  # auto | local | openrouter | anthropic | openai
 
     # OpenRouter
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     embedding_model: str = "openai/text-embedding-3-small"
     embedding_dim: int = 1536
-    chat_model: str = "anthropic/claude-3.5-sonnet"
+    chat_model: str = "openai/gpt-oss-120b:free"
 
     # Other providers (optional)
     anthropic_api_key: str = ""

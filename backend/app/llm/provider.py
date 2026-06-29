@@ -43,7 +43,25 @@ _REGISTRY = {
 }
 
 
+def _auto_select() -> str:
+    """Pick a provider from whichever key is configured, else offline local."""
+    if settings.openrouter_api_key:
+        return "openrouter"
+    if settings.anthropic_api_key:
+        return "anthropic"
+    if settings.openai_api_key:
+        return "openai"
+    return "local"
+
+
 def get_provider() -> LLMProvider:
-    """Return the configured provider, falling back to local if unknown."""
-    cls = _REGISTRY.get(settings.llm_provider, LocalProvider)
+    """Return the configured provider.
+
+    ``auto`` (the default) detects a provider from configured keys; an explicit
+    name is honored as-is; anything unknown falls back to local.
+    """
+    name = settings.llm_provider
+    if name == "auto":
+        name = _auto_select()
+    cls = _REGISTRY.get(name, LocalProvider)
     return cls()

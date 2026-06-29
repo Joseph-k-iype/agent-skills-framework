@@ -51,6 +51,15 @@ export function DeepEvalPanel({ workspaceId, path }: { workspaceId: string; path
         <Alert type="warning" showIcon message="Deep evaluation unavailable" description={report.reason} />
       )}
 
+      {report && report.available && report.skipped > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          message={`${report.skipped} case(s) skipped`}
+          description="Some model calls were rate-limited or failed and were skipped rather than scored. Add provider credits or use a higher-limit model for a complete run."
+        />
+      )}
+
       {report && report.available && report.cases.length > 0 && (
         <>
           <Alert
