@@ -1,5 +1,4 @@
 import {
-  AppstoreOutlined,
   AuditOutlined,
   DashboardOutlined,
   DeploymentUnitOutlined,
@@ -23,7 +22,6 @@ const DEVELOPER_NAV: NavItem[] = [
   { key: "/dashboard", label: "Dashboard", icon: DashboardOutlined },
   { key: "/workspace", label: "Workspace", icon: FolderOpenOutlined },
   { key: "/knowledge", label: "Knowledge Graph", icon: DeploymentUnitOutlined },
-  { key: "/skills", label: "Skills", icon: AppstoreOutlined },
 ];
 
 const ADMIN_NAV: NavItem[] = [

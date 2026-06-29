@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.logging import get_logger
-from app.llm.openrouter import get_llm
+from app.llm.provider import get_provider
 from app.okf.linker import resolve_links
 from app.okf.models import IngestionResult, OkfDocument
 from app.okf.parser import parse_document
@@ -43,7 +43,7 @@ def discover(source_repository: str) -> list[OkfDocument]:
 class OkfService:
     def __init__(self) -> None:
         self.repo = OkfGraphRepository()
-        self.llm = get_llm()
+        self.llm = get_provider()
 
     async def ingest(
         self, *, source_repository: str, workspace_id: str | None, folder_id: str | None

@@ -6,14 +6,14 @@ links to) per the PRD explainability rule — no graph-derived answer without it
 
 from __future__ import annotations
 
-from app.llm.openrouter import get_llm
+from app.llm.provider import get_provider
 from app.repositories.okf_graph_repo import OkfGraphRepository
 
 
 class KnowledgeService:
     def __init__(self) -> None:
         self.repo = OkfGraphRepository()
-        self.llm = get_llm()
+        self.llm = get_provider()
 
     async def search(self, query: str, k: int = 10) -> dict:
         vec = await self.llm.embed_one(query)
