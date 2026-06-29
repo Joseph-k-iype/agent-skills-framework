@@ -20,3 +20,8 @@ class EventType(StrEnum):
     SKILL_PUBLISHED = "SkillPublished"
     SKILL_DELETED = "SkillDeleted"
     SKILL_CLONED = "SkillCloned"
+    CONCEPT_CREATED = "ConceptCreated"
+    CONCEPT_UPDATED = "ConceptUpdated"
+    CONCEPT_MOVED = "ConceptMoved"
+    CONCEPT_DELETED = "ConceptDeleted"
+    CONCEPT_PUBLISHED = "ConceptPublished"
