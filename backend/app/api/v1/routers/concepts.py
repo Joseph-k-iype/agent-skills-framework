@@ -149,6 +149,18 @@ async def evaluate_concept(
     return success(report)
 
 
+@router.post("/concept/deep-evaluate")
+async def deep_evaluate_concept(
+    workspace_id: str,
+    path: str,
+    n: int = 5,
+    user: CurrentUser = Depends(require_permission("skill:evaluate")),
+    db: AsyncSession = Depends(get_db),
+):
+    report = await ConceptService(db, user).deep_evaluate(workspace_id, path, n_cases=n)
+    return success(report)
+
+
 @router.get("/search")
 async def search_workspace(
     workspace_id: str,

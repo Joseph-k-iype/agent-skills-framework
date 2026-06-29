@@ -111,6 +111,17 @@ class ConceptService:
         report = await EvalSupervisor().evaluate(concept, bundle_files)
         return report.to_dict()
 
+    async def deep_evaluate(self, workspace_id: str, path: str, n_cases: int = 5) -> dict:
+        """Agentic LLM-as-judge evaluation (generate cases, with/without, score)."""
+        from app.evals.deep import DeepEvaluator
+
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        concept = parse_concept(path, bundle.read_file(path))
+        report = await DeepEvaluator().evaluate(concept, n_cases=n_cases)
+        return report.to_dict()
+
     async def search(self, workspace_id: str, q: str, k: int = 10) -> list[dict]:
         """Semantic search over the workspace's concept projection."""
         vec = await self.index.provider.embed_one(q)
