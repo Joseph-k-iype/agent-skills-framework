@@ -168,3 +168,35 @@ Links to [the validator](../payments/validator.md) become graph edges.
 - All 6 eval agents run and aggregate, offline (rules) and with a provider (LLM).
 - No hardcoded runtime; no hardcoded LLM provider.
 - No half-finished modules in scope; backend + frontend tests pass.
+
+---
+
+# Round 2 — Corrections & agentic evaluation (2026-06-29)
+
+User feedback after round 1, with co-designed decisions:
+
+1. **Remove the leftover "Import OKF" system.** The Knowledge Graph page was still
+   wired to the legacy OKFDocument import (`/knowledge/okf/import`, `okf_service`,
+   `OkfGraphRepository`). Remove that whole path. The Knowledge Graph page instead
+   shows the **selected workspace's concept projection** (nodes + REFERENCES edges)
+   plus semantic search — no import (files are the bundle).
+2. **Finish/clean unfinished code:** delete the legacy OKFDocument import system,
+   the legacy skills backend (router/service/repo/cypher + the `/evaluate` 501),
+   and the `NotImplementedError` Celery stubs; replace with a real
+   `reindex_workspace` task.
+3. **Runtime is not hardcoded:** the editor's runtime AutoComplete is populated
+   from the **distinct runtimes already in use** in the workspace, and remains
+   free text so users can add new ones.
+4. **Linked concepts — prompted helper:** an "Insert link" helper in the body
+   editor. It is a guided picker (searchable list of workspace concepts +
+   suggested related concepts) that inserts a bundle-root markdown link
+   `[Title](/path.md)` at the cursor; the graph edge and "Linked concepts" list
+   follow automatically.
+5. **Agentic Deep evaluation (LLM-as-judge):** a **separate** on-demand run,
+   distinct from the 6 fast rule checks. Flow: the LLM generates N test cases +
+   edge cases for the skill → answers each **with** the skill body as context and
+   **without** it → an LLM judge scores both → report **effectiveness** (with-vs-
+   without delta + win-rate) and a per-case breakdown. Requires a chat-capable
+   provider; with the local/offline provider it returns a clear "unavailable"
+   result. The evaluator takes the provider by injection so it is testable with a
+   stub provider.
