@@ -22,9 +22,12 @@ def test_create_and_fetch_workspace(graph_name):
 def test_folder_hierarchy_and_subtree(graph_name):
     r = _repo()
     r.create_workspace(id="w1", name="Finance", description=None, owner="u1", ts=TS)
-    r.create_folder(id="f1", name="Reports", path="/reports", workspace_id="w1", parent_id="w1", ts=TS)
     r.create_folder(
-        id="f2", name="Quarterly", path="/reports/quarterly", workspace_id="w1", parent_id="f1", ts=TS
+        id="f1", name="Reports", path="/reports", workspace_id="w1", parent_id="w1", ts=TS
+    )
+    r.create_folder(
+        id="f2", name="Quarterly", path="/reports/quarterly",
+        workspace_id="w1", parent_id="f1", ts=TS,
     )
 
     subtree = r.get_subtree("w1")

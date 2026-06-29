@@ -11,7 +11,9 @@ TS = "2026-01-01T00:00:00+00:00"
 def _seed_folder() -> tuple[WorkspaceGraphRepository, str]:
     w = WorkspaceGraphRepository()
     w.create_workspace(id="w1", name="W", description=None, owner="u1", ts=TS)
-    w.create_folder(id="fold1", name="Skills", path="/skills", workspace_id="w1", parent_id="w1", ts=TS)
+    w.create_folder(
+        id="fold1", name="Skills", path="/skills", workspace_id="w1", parent_id="w1", ts=TS
+    )
     return w, "fold1"
 
 
@@ -75,7 +77,9 @@ def test_clone_creates_independent_draft(graph_name):
         id="s1", skill_key="k", name="S", description="d", runtime="python", version="0.5.0",
         workspace_id="w1", folder_id="fold1", tags=["t"], capabilities=[], ts=TS,
     )
-    clone = r.clone_skill(src_id="s1", new_id="s2", skill_key="k2", name="S copy", folder_id="fold1", ts=TS)
+    clone = r.clone_skill(
+        src_id="s1", new_id="s2", skill_key="k2", name="S copy", folder_id="fold1", ts=TS
+    )
     assert clone["version"] == "0.1.0"
     assert clone["status"] == "draft"
     assert clone["skill_key"] == "k2"

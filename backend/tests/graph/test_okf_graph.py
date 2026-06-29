@@ -34,7 +34,9 @@ async def test_ingest_and_search(graph_name, offline_embeddings):
     assert "nonexistent-spec.md" in result.orphans
 
     # Re-ingest is idempotent for embeddings (content-hash dedupe).
-    again = await OkfService().ingest(source_repository=str(SAMPLE), workspace_id=None, folder_id=None)
+    again = await OkfService().ingest(
+        source_repository=str(SAMPLE), workspace_id=None, folder_id=None
+    )
     assert again.embedded == 0
 
     # Lexical search should surface the revenue policy for a revenue query.
