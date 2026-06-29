@@ -1,4 +1,4 @@
-import { AppstoreOutlined, DeploymentUnitOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import { DeploymentUnitOutlined, FileTextOutlined, FolderOpenOutlined } from "@ant-design/icons";
 import { Card, Col, Row, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/shared/components/PageHeader";
@@ -6,9 +6,9 @@ import { tokens } from "@/app/theme/tokens";
 import { useAuthStore } from "@/stores/authStore";
 
 const QUICK = [
-  { to: "/workspace", icon: FolderOpenOutlined, title: "Workspace", body: "Organize knowledge packages, folders and assets." },
-  { to: "/knowledge", icon: DeploymentUnitOutlined, title: "Knowledge Graph", body: "Import OKF and search across the graph." },
-  { to: "/skills", icon: AppstoreOutlined, title: "Skills", body: "Author, version and publish agent skills." },
+  { to: "/workspace", icon: FolderOpenOutlined, title: "Workspace", body: "Folders and markdown concepts — skills, agents, prompts, docs." },
+  { to: "/workspace", icon: FileTextOutlined, title: "Author a concept", body: "Write a skill with a body, mermaid diagrams and a free-text runtime." },
+  { to: "/knowledge", icon: DeploymentUnitOutlined, title: "Knowledge Graph", body: "Search concepts and explore how they link together." },
 ];
 
 export default function DashboardPage() {

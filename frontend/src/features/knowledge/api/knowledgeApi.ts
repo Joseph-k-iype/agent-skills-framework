@@ -1,25 +1,16 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { http, unwrap } from "@/shared/api/client";
 
-export interface SearchResult {
-  id: string;
+export interface SearchHit {
+  path: string;
   title: string;
   type: string;
-  relative_path: string;
+  runtime?: string | null;
+  description?: string | null;
   score: number;
-  provenance: {
-    source_repository?: string;
-    references: { id: string; title: string }[];
-    folder_id?: string | null;
-  };
 }
 
-export interface SearchResponse {
-  query: string;
-  semantic: boolean;
-  results: SearchResult[];
-}
-
+// Shape consumed by GraphRelationshipView.
 export interface GraphEdge {
   rel: string;
   dir: "in" | "out";
@@ -33,50 +24,49 @@ export interface Neighborhood {
   edges: GraphEdge[];
 }
 
-export interface ImportResult {
-  documents: number;
-  references: number;
-  embedded: number;
-  orphans: string[];
-  document_ids: string[];
-}
-
-export function useSearch(query: string, enabled: boolean) {
+export function useWorkspaceSearch(
+  workspaceId: string | undefined,
+  query: string,
+  enabled: boolean,
+) {
   return useQuery({
-    queryKey: ["knowledge-search", query],
-    queryFn: () => unwrap<SearchResponse>(http.get("/knowledge/search", { params: { q: query, k: 10 } })),
-    enabled: enabled && query.trim().length > 0,
-  });
-}
-
-export function useNeighborhood(nodeId: string | null) {
-  return useQuery({
-    queryKey: ["knowledge-graph", nodeId],
-    queryFn: () => unwrap<Neighborhood>(http.get(`/knowledge/graph/${nodeId}`)),
-    enabled: !!nodeId,
-  });
-}
-
-export interface OkfDocSummary {
-  id: string;
-  title: string;
-  type: string;
-  relative_path?: string;
-}
-
-export function useDocuments(workspaceId?: string) {
-  return useQuery({
-    queryKey: ["knowledge-docs", workspaceId ?? "all"],
+    queryKey: ["ws-search", workspaceId ?? "", query],
     queryFn: () =>
-      unwrap<OkfDocSummary[]>(
-        http.get("/knowledge/documents", { params: workspaceId ? { workspace_id: workspaceId } : {} }),
-      ),
+      unwrap<SearchHit[]>(http.get(`/workspaces/${workspaceId}/search`, { params: { q: query } })),
+    enabled: enabled && !!workspaceId && query.trim().length > 0,
   });
 }
 
-export function useImportOkf() {
-  return useMutation({
-    mutationFn: (body: { source_repository: string; workspace_id?: string; folder_id?: string }) =>
-      unwrap<ImportResult>(http.post("/knowledge/okf/import", body)),
+interface RawNeighbor {
+  dir: "in" | "out";
+  path: string;
+  title?: string;
+  type?: string;
+}
+interface RawNeighborhood {
+  node: { path: string; title?: string; type?: string } | null;
+  edges: RawNeighbor[];
+}
+
+export function useConceptNeighborhood(workspaceId: string | undefined, path: string | null) {
+  return useQuery({
+    queryKey: ["ws-graph", workspaceId ?? "", path],
+    queryFn: async (): Promise<Neighborhood | undefined> => {
+      const raw = await unwrap<RawNeighborhood>(
+        http.get(`/workspaces/${workspaceId}/concept/graph`, { params: { path } }),
+      );
+      if (!raw.node) return undefined;
+      return {
+        node: { id: raw.node.path, title: raw.node.title, type: raw.node.type },
+        edges: (raw.edges ?? []).map((e) => ({
+          rel: "references",
+          dir: e.dir,
+          id: e.path,
+          label: e.title ?? e.path,
+          kind: e.type ?? "Concept",
+        })),
+      };
+    },
+    enabled: !!workspaceId && !!path,
   });
 }
