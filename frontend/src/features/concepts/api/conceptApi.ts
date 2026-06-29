@@ -168,6 +168,37 @@ export function useEvaluateConcept(workspaceId: string, path: string) {
   });
 }
 
+export interface DeepCase {
+  scenario: string;
+  is_edge_case: boolean;
+  with_score: number;
+  without_score: number;
+  delta: number;
+  note?: string | null;
+}
+
+export interface DeepEvalReport {
+  available: boolean;
+  reason?: string | null;
+  cases: DeepCase[];
+  effectiveness_avg: number;
+  win_rate: number;
+  with_avg: number;
+  without_avg: number;
+  summary: string;
+}
+
+export function useDeepEvaluateConcept(workspaceId: string, path: string) {
+  return useMutation<DeepEvalReport, Error, number | void>({
+    mutationFn: (n) =>
+      unwrap<DeepEvalReport>(
+        http.post(`/workspaces/${workspaceId}/concept/deep-evaluate`, null, {
+          params: { path, n: n ?? 5 },
+        }),
+      ),
+  });
+}
+
 export function searchWorkspace(workspaceId: string, q: string) {
   return unwrap<SearchHit[]>(http.get(`/workspaces/${workspaceId}/search`, { params: { q } }));
 }

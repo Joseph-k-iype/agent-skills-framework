@@ -29,9 +29,11 @@ vi.mock("../api/conceptApi", () => {
   const update = { isPending: false, mutateAsync: updateMutate };
   return {
     useConcept: () => ({ isLoading: false, data }),
+    useConcepts: () => ({ isLoading: false, data: [data, { ...data, path: "x/other.md", title: "Other", runtime: "node 20" }] }),
     useConceptHistory: () => ({ data: [] }),
     useUpdateConcept: () => update,
     useEvaluateConcept: () => ({ isPending: false, mutate: vi.fn(), data: undefined }),
+    useDeepEvaluateConcept: () => ({ isPending: false, mutate: vi.fn(), data: undefined }),
   };
 });
 
