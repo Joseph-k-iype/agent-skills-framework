@@ -17,6 +17,9 @@ class NodeLabel(StrEnum):
     FOLDER = "Folder"
     SKILL = "Skill"
     OKF_DOCUMENT = "OKFDocument"
+    # A Concept is one OKF markdown file projected from the workspace bundle.
+    # It is the unified node for skills/agents/prompts/docs (type is free text).
+    CONCEPT = "Concept"
     CAPABILITY = "Capability"
     # Reserved for later phases
     WORKFLOW = "Workflow"
@@ -44,6 +47,7 @@ class RelType(StrEnum):
 # Labels whose nodes carry a vector `embedding` property (semantic search).
 EMBEDDABLE_LABELS: tuple[NodeLabel, ...] = (
     NodeLabel.OKF_DOCUMENT,
+    NodeLabel.CONCEPT,
     NodeLabel.SKILL,
     NodeLabel.CAPABILITY,
 )

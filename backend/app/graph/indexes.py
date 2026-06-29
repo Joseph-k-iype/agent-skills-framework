@@ -24,6 +24,8 @@ _RANGE_INDEXES: tuple[tuple[str, str], ...] = (
     (NodeLabel.SKILL, "workspace_id"),
     (NodeLabel.OKF_DOCUMENT, "id"),
     (NodeLabel.OKF_DOCUMENT, "relative_path"),
+    (NodeLabel.CONCEPT, "key"),
+    (NodeLabel.CONCEPT, "workspace_id"),
     (NodeLabel.CAPABILITY, "name"),
 )
 
