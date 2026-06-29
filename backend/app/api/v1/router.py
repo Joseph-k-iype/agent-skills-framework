@@ -10,8 +10,6 @@ from app.api.v1.routers import (
     concepts,
     folders,
     health,
-    knowledge,
-    skills,
     workflows,
     workspaces,
 )
@@ -24,7 +22,5 @@ api_router.include_router(
     concepts.router, prefix="/workspaces/{workspace_id}", tags=["concepts"]
 )
 api_router.include_router(folders.router, prefix="/folders", tags=["folders"])
-api_router.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])
-api_router.include_router(skills.router, prefix="/skills", tags=["skills"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(workflows.router, prefix="/workflows", tags=["workflows"])

@@ -11,9 +11,7 @@ celery_app = Celery(
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     include=[
-        "app.tasks.okf_tasks",
-        "app.tasks.embedding_tasks",
-        "app.tasks.graph_tasks",
+        "app.tasks.reindex_tasks",
     ],
 )
 

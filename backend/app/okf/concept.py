@@ -50,8 +50,8 @@ def _resolve_link(file_path: str, target: str) -> str | None:
     if target.startswith(("http://", "https://", "#", "mailto:")):
         return None
     base_dir = PurePosixPath(file_path).parent
-    # Wikilink titles (no slash, no .md) are left for the linker; only resolve
-    # things that look like file paths here.
+    # Only resolve things that look like file paths; bare wikilink titles that
+    # are not .md paths are dropped by the caller.
     candidate = (base_dir / target).as_posix() if not target.startswith("/") else target.lstrip("/")
     # Normalize ".." segments.
     parts: list[str] = []
