@@ -22,6 +22,8 @@ from app.schemas.workspace import (
     WorkspaceUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.index_service import IndexService
+from app.storage.repo import BundleRepo
 
 
 def _now() -> str:
@@ -36,12 +38,18 @@ def _slug(name: str) -> str:
     return name.strip().lower().replace(" ", "-")
 
 
+def _rel(path: str) -> str:
+    """Graph paths are stored with a leading '/'; bundle paths are relative."""
+    return path.lstrip("/")
+
+
 class WorkspaceService:
     def __init__(self, db: AsyncSession, user: CurrentUser):
         self.db = db
         self.user = user
         self.repo = WorkspaceGraphRepository()
         self.audit = AuditService(db)
+        self.index = IndexService()
 
     # ── workspaces ──
     async def create_workspace(self, body: WorkspaceCreate) -> WorkspaceOut:
@@ -52,6 +60,8 @@ class WorkspaceService:
             owner=self.user.id,
             ts=_now(),
         )
+        # The workspace IS a git-backed OKF bundle on disk.
+        BundleRepo.init(node["id"])
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.WORKSPACE_CREATED,
@@ -97,6 +107,13 @@ class WorkspaceService:
     async def delete_workspace(self, workspace_id: str) -> None:
         self._require_workspace(workspace_id)
         self.repo.delete_workspace(workspace_id)
+        self.index.repo.clear_workspace(workspace_id)
+        # Remove the on-disk bundle.
+        bundle = BundleRepo(workspace_id)
+        if bundle.exists:
+            import shutil
+
+            shutil.rmtree(bundle.root, ignore_errors=True)
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.WORKSPACE_DELETED,
@@ -132,6 +149,10 @@ class WorkspaceService:
         if node is None:
             raise NotFoundError("Parent container not found")
         node["parent_id"] = body.parent_id
+        # Create the real directory in the bundle (persisted via .gitkeep).
+        BundleRepo.init(body.workspace_id).add_dir(
+            _rel(path), f"create folder {path}", self.user.id
+        )
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.FOLDER_CREATED,
@@ -170,7 +191,9 @@ class WorkspaceService:
             self.repo.set_folder_path(id=d["id"], path=f"{new_path}{suffix}", ts=ts)
 
     async def rename_folder(self, folder_id: str, body: FolderUpdate) -> FolderOut:
-        self._require_folder(folder_id)
+        folder = self._require_folder(folder_id)
+        old_path = folder.get("path") or ""
+        workspace_id = folder.get("workspace_id")
         parent = self.repo.get_parent(folder_id)
         prefix = ""
         if parent and parent.get("type") == "Folder":
@@ -178,6 +201,7 @@ class WorkspaceService:
         new_path = f"{prefix}/{_slug(body.name)}"
         node = self.repo.rename_folder(id=folder_id, name=body.name, ts=_now())
         self._recompute_subtree_paths(folder_id, new_path)
+        await self._move_dir_and_reindex(workspace_id, old_path, new_path)
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.FOLDER_UPDATED,
@@ -192,6 +216,7 @@ class WorkspaceService:
 
     async def move_folder(self, folder_id: str, body: FolderMove) -> FolderOut:
         folder = self._require_folder(folder_id)
+        old_path = folder.get("path") or ""
         target = body.new_parent_id
         workspace_id = folder.get("workspace_id")
 
@@ -211,6 +236,7 @@ class WorkspaceService:
         prefix = self._container_path(target, workspace_id) if workspace_id else ""
         new_path = f"{prefix}/{_slug(folder.get('name', ''))}"
         self._recompute_subtree_paths(folder_id, new_path)
+        await self._move_dir_and_reindex(workspace_id, old_path, new_path)
 
         await self.audit.record(
             actor_id=self.user.id,
@@ -226,7 +252,14 @@ class WorkspaceService:
 
     async def delete_folder(self, folder_id: str) -> None:
         folder = self._require_folder(folder_id)
+        path = folder.get("path") or ""
+        workspace_id = folder.get("workspace_id")
         self.repo.delete_folder(folder_id)
+        if workspace_id:
+            bundle = BundleRepo(workspace_id)
+            if bundle.exists and bundle.dir_exists(_rel(path)):
+                bundle.delete_dir(_rel(path), f"delete folder {path}", self.user.id)
+                await self.index.reindex_workspace(workspace_id)
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.FOLDER_DELETED,
@@ -234,3 +267,21 @@ class WorkspaceService:
             resource_id=folder_id,
             workspace_id=folder.get("workspace_id"),
         )
+
+    async def _move_dir_and_reindex(
+        self, workspace_id: str | None, old_path: str, new_path: str
+    ) -> None:
+        """Move a folder's on-disk directory and refresh the graph projection.
+
+        Concept node keys are path-based, so a structural folder change requires
+        a reindex to keep the projection consistent with the files.
+        """
+        if not workspace_id or old_path == new_path:
+            return
+        bundle = BundleRepo(workspace_id)
+        if not bundle.exists:
+            return
+        src, dst = _rel(old_path), _rel(new_path)
+        if bundle.dir_exists(src) and not bundle.dir_exists(dst):
+            bundle.move_dir(src, dst, f"move folder {old_path} -> {new_path}", self.user.id)
+            await self.index.reindex_workspace(workspace_id)

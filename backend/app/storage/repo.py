@@ -71,14 +71,47 @@ class BundleRepo:
     def _head(self) -> str:
         return self._git("rev-parse", "HEAD")
 
-    # ── file operations ──
+    # ── directory operations ──
     def make_dir(self, rel_path: str) -> None:
-        """Create a directory (tracked via a .gitkeep placeholder)."""
+        """Create a directory (tracked via a .gitkeep placeholder, no commit)."""
         target = self._abs(rel_path)
         target.mkdir(parents=True, exist_ok=True)
         keep = target / ".gitkeep"
         if not keep.exists():
             keep.write_text("", encoding="utf-8")
+
+    def dir_exists(self, rel_path: str) -> bool:
+        return self._abs(rel_path).is_dir()
+
+    def add_dir(self, rel_path: str, message: str, author: str) -> str:
+        """Create a directory and commit its .gitkeep so empty folders persist."""
+        self.make_dir(rel_path)
+        self._git("add", "-A")
+        self._git("commit", "-q", "-m", message, author=author)
+        return self._head()
+
+    def move_dir(self, src: str, dst: str, message: str, author: str) -> str:
+        """Move a directory tree (with all tracked files) and commit."""
+        import shutil
+
+        src_abs = self._abs(src)
+        dst_abs = self._abs(dst)
+        dst_abs.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src_abs), str(dst_abs))
+        self._git("add", "-A")
+        self._git("commit", "-q", "-m", message, author=author)
+        return self._head()
+
+    def delete_dir(self, rel_path: str, message: str, author: str) -> str:
+        """Remove a directory tree and commit."""
+        import shutil
+
+        target = self._abs(rel_path)
+        if target.is_dir():
+            shutil.rmtree(target)
+        self._git("add", "-A")
+        self._git("commit", "-q", "-m", message, author=author)
+        return self._head()
 
     def write_file(self, rel_path: str, content: str, message: str, author: str) -> str:
         target = self._abs(rel_path)
