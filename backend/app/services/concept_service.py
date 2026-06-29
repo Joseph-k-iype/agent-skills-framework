@@ -99,6 +99,24 @@ class ConceptService:
             )
         return out
 
+    async def search(self, workspace_id: str, q: str, k: int = 10) -> list[dict]:
+        """Semantic search over the workspace's concept projection."""
+        vec = await self.index.provider.embed_one(q)
+        hits = self.index.repo.search(workspace_id=workspace_id, embedding=vec, k=k)
+        results = []
+        for props, score in hits:
+            results.append(
+                {
+                    "path": props.get("path"),
+                    "title": props.get("title"),
+                    "type": props.get("type"),
+                    "runtime": props.get("runtime"),
+                    "description": props.get("description"),
+                    "score": score,
+                }
+            )
+        return results
+
     def history(self, workspace_id: str, path: str) -> list[VersionEntry]:
         bundle = self._bundle(workspace_id)
         if not bundle.exists or not bundle.exists_file(path):
