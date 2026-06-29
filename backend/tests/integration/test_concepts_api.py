@@ -97,6 +97,10 @@ async def test_concept_crud_and_search(http, admin_id):
         assert len(report["results"]) == 6
         assert "overall_score" in report
 
+        graph = await c.get(f"/api/v1/workspaces/{ws_id}/graph")
+        assert graph.status_code == 200
+        assert any(n["path"] == path for n in graph.json()["data"]["nodes"])
+
 
 async def test_consumer_cannot_create_concept(http, admin_id):
     _login(RoleName.DEVELOPER, admin_id)

@@ -115,6 +115,18 @@ class ConceptGraphRepository:
                 out.append((props, score))
         return out
 
+    def graph(self, workspace_id: str) -> dict:
+        """All concept nodes + REFERENCES edges for the workspace graph view."""
+        rows = _rows(client.ro_query(Q.WORKSPACE_GRAPH, {"workspace_id": workspace_id}))
+        nodes = []
+        edges = []
+        for path, title, ctype, targets in rows:
+            nodes.append({"path": path, "title": title, "type": ctype})
+            for t in targets or []:
+                if t:
+                    edges.append({"source": path, "target": t})
+        return {"nodes": nodes, "edges": edges}
+
     def neighborhood(self, *, workspace_id: str, path: str) -> dict | None:
         rows = _rows(client.ro_query(Q.NEIGHBORHOOD, {"key": make_key(workspace_id, path)}))
         if not rows:

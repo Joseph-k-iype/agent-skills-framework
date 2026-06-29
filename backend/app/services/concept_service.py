@@ -122,6 +122,13 @@ class ConceptService:
         report = await DeepEvaluator().evaluate(concept, n_cases=n_cases)
         return report.to_dict()
 
+    def graph(self, workspace_id: str) -> dict:
+        """The workspace concept graph (nodes + reference edges) for visualization."""
+        return self.index.repo.graph(workspace_id)
+
+    def neighborhood(self, workspace_id: str, path: str) -> dict | None:
+        return self.index.repo.neighborhood(workspace_id=workspace_id, path=path)
+
     async def search(self, workspace_id: str, q: str, k: int = 10) -> list[dict]:
         """Semantic search over the workspace's concept projection."""
         vec = await self.index.provider.embed_one(q)

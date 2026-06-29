@@ -161,6 +161,26 @@ async def deep_evaluate_concept(
     return success(report)
 
 
+@router.get("/graph")
+async def workspace_graph(
+    workspace_id: str,
+    user: CurrentUser = Depends(require_permission("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return success(ConceptService(db, user).graph(workspace_id))
+
+
+@router.get("/concept/graph")
+async def concept_neighborhood(
+    workspace_id: str,
+    path: str,
+    user: CurrentUser = Depends(require_permission("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    data = ConceptService(db, user).neighborhood(workspace_id, path)
+    return success(data or {"node": None, "edges": []})
+
+
 @router.get("/search")
 async def search_workspace(
     workspace_id: str,

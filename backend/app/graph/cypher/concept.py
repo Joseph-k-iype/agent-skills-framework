@@ -42,6 +42,14 @@ MATCH (c:Concept {workspace_id:$workspace_id})
 RETURN c ORDER BY c.path LIMIT $limit
 """
 
+WORKSPACE_GRAPH = """
+MATCH (c:Concept {workspace_id:$workspace_id})
+OPTIONAL MATCH (c)-[:REFERENCES]->(t:Concept {workspace_id:$workspace_id})
+RETURN c.path AS path, c.title AS title, c.type AS type,
+       collect(DISTINCT t.path) AS targets
+ORDER BY path
+"""
+
 COUNT_CONCEPTS = "MATCH (c:Concept {workspace_id:$workspace_id}) RETURN count(c) AS n"
 
 COUNT_REFERENCES = """
