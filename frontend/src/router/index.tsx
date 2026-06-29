@@ -8,7 +8,7 @@ const DashboardPage = lazy(() => import("@/features/dashboard/pages/DashboardPag
 const WorkspacePage = lazy(() => import("@/features/workspace/pages/WorkspacePage"));
 const KnowledgeGraphPage = lazy(() => import("@/features/knowledge/pages/KnowledgeGraphPage"));
 const SkillsPage = lazy(() => import("@/features/skills/pages/SkillsPage"));
-const SkillEditorPage = lazy(() => import("@/features/skills/pages/SkillEditorPage"));
+const ConceptEditorPage = lazy(() => import("@/features/concepts/pages/ConceptEditorPage"));
 
 const S = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
@@ -23,7 +23,7 @@ export const router = createBrowserRouter([
       { path: "workspace", element: S(<WorkspacePage />) },
       { path: "knowledge", element: S(<KnowledgeGraphPage />) },
       { path: "skills", element: S(<SkillsPage />) },
-      { path: "skills/:id", element: S(<SkillEditorPage />) },
+      { path: "concepts/:workspaceId/*", element: S(<ConceptEditorPage />) },
       { path: "marketplace", element: <Placeholder eyebrow="Marketplace" title="Marketplace" phase="Phase 7" /> },
       {
         path: "admin/users",
