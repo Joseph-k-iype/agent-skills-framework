@@ -89,6 +89,14 @@ async def test_concept_crud_and_search(http, admin_id):
         assert found.status_code == 200
         assert any(r["path"] == path for r in found.json()["data"])
 
+        evaluated = await c.post(
+            f"/api/v1/workspaces/{ws_id}/concept/evaluate", params={"path": path}
+        )
+        assert evaluated.status_code == 200, evaluated.text
+        report = evaluated.json()["data"]
+        assert len(report["results"]) == 6
+        assert "overall_score" in report
+
 
 async def test_consumer_cannot_create_concept(http, admin_id):
     _login(RoleName.DEVELOPER, admin_id)

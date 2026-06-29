@@ -99,6 +99,18 @@ class ConceptService:
             )
         return out
 
+    async def evaluate(self, workspace_id: str, path: str) -> dict:
+        """Run the six-evaluator supervisor over a concept; returns a report dict."""
+        from app.evals.supervisor import EvalSupervisor
+
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        concept = parse_concept(path, bundle.read_file(path))
+        bundle_files = [p for p in bundle.list_files(".md")]
+        report = await EvalSupervisor().evaluate(concept, bundle_files)
+        return report.to_dict()
+
     async def search(self, workspace_id: str, q: str, k: int = 10) -> list[dict]:
         """Semantic search over the workspace's concept projection."""
         vec = await self.index.provider.embed_one(q)

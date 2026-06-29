@@ -138,6 +138,17 @@ async def publish_concept(
     return success(out.model_dump())
 
 
+@router.post("/concept/evaluate")
+async def evaluate_concept(
+    workspace_id: str,
+    path: str,
+    user: CurrentUser = Depends(require_permission("skill:evaluate")),
+    db: AsyncSession = Depends(get_db),
+):
+    report = await ConceptService(db, user).evaluate(workspace_id, path)
+    return success(report)
+
+
 @router.get("/search")
 async def search_workspace(
     workspace_id: str,
