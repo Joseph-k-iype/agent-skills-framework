@@ -31,6 +31,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # Workspace storage — each workspace is a git-backed OKF bundle on disk.
+    # Configurable; never hardcode a path elsewhere.
+    workspaces_root: str = str(Path(__file__).resolve().parents[3] / "data" / "workspaces")
+
     # PostgreSQL
     database_url: str = "postgresql+asyncpg://eakso:eakso@postgres:5432/eakso"
 
@@ -63,12 +67,20 @@ class Settings(BaseSettings):
     ldap_group_base_dn: str = ""
     ldap_group_role_map: dict[str, str] = {}
 
+    # LLM provider — pluggable. "local" works fully offline (hash embeddings,
+    # rules-only evals). Other providers light up when their key is set.
+    llm_provider: str = "local"  # local | openrouter | anthropic | openai
+
     # OpenRouter
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     embedding_model: str = "openai/text-embedding-3-small"
     embedding_dim: int = 1536
     chat_model: str = "anthropic/claude-3.5-sonnet"
+
+    # Other providers (optional)
+    anthropic_api_key: str = ""
+    openai_api_key: str = ""
 
     @field_validator("cors_origins", mode="before")
     @classmethod
