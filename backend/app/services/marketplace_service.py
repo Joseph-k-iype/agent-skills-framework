@@ -148,6 +148,58 @@ class MarketplaceService:
             "system_prompt": system_prompt,
         }
 
+    async def public_list(
+        self, *, q=None, type=None, category=None, sort="uses", limit=60
+    ) -> list[dict]:
+        rows = await self.repo.list(q=q, type=type, sort=sort, limit=limit)
+        if category:
+            rows = [r for r in rows if (r.category or r.type) == category]
+        return [_listing_dict(x) for x in rows]
+
+    async def public_categories(self) -> list[dict]:
+        rows = await self.repo.list(limit=1000)
+        counts: dict[str, int] = {}
+        for r in rows:
+            key = r.category or r.type or "Other"
+            counts[key] = counts.get(key, 0) + 1
+        return sorted(
+            [{"category": k, "count": v} for k, v in counts.items()],
+            key=lambda d: (-d["count"], d["category"]),
+        )
+
+    async def public_get(self, listing_id: str) -> dict:
+        listing = await self.repo.get(uuid.UUID(listing_id))
+        if not listing or not listing.is_public:
+            raise NotFoundError("Listing not found")
+        out = _listing_dict(listing)
+        out["content"] = await self._read_published(listing)
+        versions = await self.repo.list_versions(listing.id)
+        out["versions"] = [
+            {
+                "version": v.version,
+                "sha": v.content_sha,
+                "changelog": v.changelog,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            }
+            for v in versions
+        ]
+        return out
+
+    async def public_fetch_by_sha(self, sha: str) -> dict:
+        version = await self.repo.get_version_by_sha(sha)
+        if version is None:
+            raise NotFoundError("Skill version not found")
+        listing = await self.repo.get(version.listing_id)
+        if not listing or not listing.is_public:
+            raise NotFoundError("Listing not found")
+        return {
+            "sha": version.content_sha,
+            "version": version.version,
+            "title": listing.title,
+            "type": listing.type,
+            "content": version.content,
+        }
+
     async def report_usage(
         self, *, listing_id: str, user_id: str | None, kind: str = "apply", meta: dict | None = None
     ) -> dict:
