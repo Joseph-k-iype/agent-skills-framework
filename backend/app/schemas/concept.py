@@ -36,6 +36,15 @@ class ConceptPublish(BaseModel):
     version: str = Field(min_length=1)
 
 
+class EvalCase(BaseModel):
+    input: str = ""
+    expected: str = ""
+
+
+class EvalCasesBody(BaseModel):
+    cases: list[EvalCase] = Field(default_factory=list)
+
+
 class ConceptRef(BaseModel):
     path: str
     title: str | None = None

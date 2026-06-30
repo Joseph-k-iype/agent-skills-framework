@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from app.evals.agent import EvalAgent
 from app.evals.base import EvalFinding, EvalResult, Evaluator
 from app.llm.provider import LLMProvider
 from app.okf.concept import Concept
@@ -11,15 +12,12 @@ from app.okf.concept import Concept
 _HEADING = re.compile(r"^#{1,6}\s", re.MULTILINE)
 _CODE_FENCE = re.compile(r"```")
 
-_JUDGE_SYSTEM = (
-    "You are a senior reviewer scoring an OKF knowledge concept for correctness and "
-    "completeness. Reply with a single integer 0-100 (higher is better) on the first line, "
-    "then one short sentence of justification."
-)
-
 
 class QualityEvaluator(Evaluator):
     name = "quality"
+
+    def __init__(self, agent: EvalAgent | None = None) -> None:
+        self._agent = agent or EvalAgent()
 
     def run_rules(self, concept: Concept, bundle_files: list[str]) -> EvalResult:
         findings: list[EvalFinding] = []
@@ -49,18 +47,23 @@ class QualityEvaluator(Evaluator):
     async def run_llm_judge(
         self, concept: Concept, provider: LLMProvider
     ) -> EvalResult | None:
-        prompt = f"Title: {concept.title}\nType: {concept.type}\n\n{concept.body}"
-        reply = await provider.chat(_JUDGE_SYSTEM, prompt)
-        if not reply:
+        # `provider` decides whether base.evaluate calls us at all; the actual
+        # model call goes through the Pydantic AI agent (structured + retries).
+        if not self._agent.available:
             return None
-        first = reply.strip().splitlines()[0]
-        digits = re.search(r"\d{1,3}", first)
-        score = float(min(100, int(digits.group(0)))) if digits else 70.0
-        justification = reply.strip()[:280]
+        quality = await self._agent.quality_score(concept)
+        if quality is None:
+            return None
         return EvalResult(
             self.name,
-            score,
-            [EvalFinding(severity="info", message="LLM quality judgment", evidence=justification)],
+            float(quality.score),
+            [
+                EvalFinding(
+                    severity="info",
+                    message="LLM quality judgment",
+                    evidence=quality.justification[:280],
+                )
+            ],
             blocking=False,
             used_llm=True,
         )

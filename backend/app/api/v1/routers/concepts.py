@@ -7,7 +7,7 @@ permission codes — a skill is just a concept with ``type: skill``.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_db, require_permission
@@ -17,10 +17,17 @@ from app.schemas.concept import (
     ConceptMove,
     ConceptPublish,
     ConceptUpdate,
+    EvalCasesBody,
 )
 from app.services.concept_service import ConceptService
+from app.services.index_service import IndexService
 
 router = APIRouter()
+
+
+async def _heal_embeddings(workspace_id: str) -> None:
+    """Background re-embed of any pending nodes (off the request path)."""
+    await IndexService().embed_pending(workspace_id)
 
 
 @router.get("/concepts")
@@ -37,6 +44,7 @@ async def list_concepts(
 async def create_concept(
     workspace_id: str,
     body: ConceptCreate,
+    background: BackgroundTasks,
     user: CurrentUser = Depends(require_permission("skill:create")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -52,6 +60,7 @@ async def create_concept(
         body=body.body,
         frontmatter=body.frontmatter,
     )
+    background.add_task(_heal_embeddings, workspace_id)
     return success(out.model_dump())
 
 
@@ -70,6 +79,7 @@ async def update_concept(
     workspace_id: str,
     path: str,
     body: ConceptUpdate,
+    background: BackgroundTasks,
     user: CurrentUser = Depends(require_permission("skill:update")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -85,6 +95,7 @@ async def update_concept(
         body=body.body,
         frontmatter=body.frontmatter,
     )
+    background.add_task(_heal_embeddings, workspace_id)
     return success(out.model_dump())
 
 
@@ -124,6 +135,53 @@ async def concept_history(
     return success([v.model_dump() for v in items])
 
 
+@router.get("/concept/versions")
+async def concept_versions(
+    workspace_id: str,
+    path: str,
+    user: CurrentUser = Depends(require_permission("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return success(ConceptService(db, user).versions(workspace_id, path))
+
+
+@router.get("/concept/version")
+async def concept_version_content(
+    workspace_id: str,
+    path: str,
+    ref: str,
+    user: CurrentUser = Depends(require_permission("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return success(ConceptService(db, user).version_content(workspace_id, path, ref))
+
+
+@router.get("/concept/diff")
+async def concept_diff(
+    workspace_id: str,
+    path: str,
+    a: str,
+    b: str,
+    user: CurrentUser = Depends(require_permission("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return success(ConceptService(db, user).diff_versions(workspace_id, path, a, b))
+
+
+@router.post("/concept/restore")
+async def concept_restore(
+    workspace_id: str,
+    path: str,
+    ref: str,
+    background: BackgroundTasks,
+    user: CurrentUser = Depends(require_permission("skill:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    out = await ConceptService(db, user).restore_version(workspace_id, path, ref)
+    background.add_task(_heal_embeddings, workspace_id)
+    return success(out.model_dump())
+
+
 @router.post("/concept/publish")
 async def publish_concept(
     workspace_id: str,
@@ -159,6 +217,63 @@ async def deep_evaluate_concept(
 ):
     report = await ConceptService(db, user).deep_evaluate(workspace_id, path, n_cases=n)
     return success(report)
+
+
+@router.get("/concept/eval-cases")
+async def get_eval_cases(
+    workspace_id: str,
+    path: str,
+    user: CurrentUser = Depends(require_permission("skill:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    return success(ConceptService(db, user).get_eval_cases(workspace_id, path))
+
+
+@router.put("/concept/eval-cases")
+async def save_eval_cases(
+    workspace_id: str,
+    path: str,
+    body: EvalCasesBody,
+    user: CurrentUser = Depends(require_permission("skill:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    cases = [c.model_dump() for c in body.cases]
+    return success(ConceptService(db, user).save_eval_cases(workspace_id, path, cases))
+
+
+@router.post("/concept/suggest-eval-cases")
+async def suggest_eval_cases(
+    workspace_id: str,
+    path: str,
+    n: int = 5,
+    user: CurrentUser = Depends(require_permission("skill:evaluate")),
+    db: AsyncSession = Depends(get_db),
+):
+    cases = await ConceptService(db, user).suggest_eval_cases(workspace_id, path, n=n)
+    return success(cases)
+
+
+@router.post("/concept/grade-eval")
+async def grade_eval(
+    workspace_id: str,
+    path: str,
+    body: EvalCasesBody,
+    user: CurrentUser = Depends(require_permission("skill:evaluate")),
+    db: AsyncSession = Depends(get_db),
+):
+    cases = [c.model_dump() for c in body.cases]
+    report = await ConceptService(db, user).grade_eval(workspace_id, path, cases)
+    return success(report)
+
+
+@router.post("/reindex")
+async def reindex_workspace(
+    workspace_id: str,
+    user: CurrentUser = Depends(require_permission("skill:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rebuild the graph projection from files and heal degraded embeddings."""
+    return success(await ConceptService(db, user).reindex(workspace_id))
 
 
 @router.get("/graph")

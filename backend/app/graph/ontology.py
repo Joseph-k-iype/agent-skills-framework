@@ -21,6 +21,8 @@ class NodeLabel(StrEnum):
     # It is the unified node for skills/agents/prompts/docs (type is free text).
     CONCEPT = "Concept"
     CAPABILITY = "Capability"
+    # A published snapshot of a Concept (one per git tag).
+    VERSION = "Version"
     # Reserved for later phases
     WORKFLOW = "Workflow"
     AGENT = "Agent"
@@ -42,6 +44,7 @@ class RelType(StrEnum):
     USES = "USES"
     OWNS = "OWNS"
     PREVIOUS_VERSION = "PREVIOUS_VERSION"
+    HAS_VERSION = "HAS_VERSION"
 
 
 # Labels whose nodes carry a vector `embedding` property (semantic search).

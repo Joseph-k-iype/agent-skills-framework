@@ -25,3 +25,4 @@ class EventType(StrEnum):
     CONCEPT_MOVED = "ConceptMoved"
     CONCEPT_DELETED = "ConceptDeleted"
     CONCEPT_PUBLISHED = "ConceptPublished"
+    CONCEPT_INSTALLED = "ConceptInstalled"

@@ -68,9 +68,10 @@ class OpenRouterProvider(EmbedOneMixin):
     def using_real_embeddings(self) -> bool:
         return bool(self.api_key)
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
+    async def embed_checked(self, texts: list[str]) -> tuple[list[list[float]], bool]:
+        # No key → genuine offline hash embeddings (real for this provider).
         if not self.api_key:
-            return [local_embedding(t, self.dim) for t in texts]
+            return [local_embedding(t, self.dim) for t in texts], True
         try:
             resp = await _post_with_retry(
                 f"{self.base_url}/embeddings",
@@ -78,10 +79,16 @@ class OpenRouterProvider(EmbedOneMixin):
                 {"model": settings.embedding_model, "input": texts},
                 timeout=60,
             )
-            return [item["embedding"] for item in resp.json()["data"]]
-        except Exception as exc:  # graceful fallback keeps ingestion working
+            return [item["embedding"] for item in resp.json()["data"]], True
+        except Exception as exc:
+            # Degraded fallback: keeps ingestion alive, but the caller must NOT
+            # persist this as a real embedding (it would poison semantic search).
             log.warning("openrouter_embed_failed_fallback_local", error=str(exc))
-            return [local_embedding(t, self.dim) for t in texts]
+            return [local_embedding(t, self.dim) for t in texts], False
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        vectors, _ = await self.embed_checked(texts)
+        return vectors
 
     async def chat(self, system: str, user: str) -> str | None:
         if not self.api_key:

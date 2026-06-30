@@ -21,15 +21,20 @@ def query_nodes(
     label: str,
     embedding: list[float],
     k: int = 10,
+    *,
+    only_ok: bool = False,
 ) -> list[tuple[dict[str, Any], float]]:
     """Return up to ``k`` nearest nodes of ``label`` with their score.
 
     Score is the configured similarity metric (cosine). FalkorDB returns a
-    distance-like score; callers sort ascending (closer = smaller).
+    distance-like score; callers sort ascending (closer = smaller). When
+    ``only_ok`` is set, nodes whose ``embedding_status`` is not ``'ok'`` (degraded
+    error-fallbacks) are filtered out so they never pollute ranking.
     """
+    where = "WHERE node.embedding_status = 'ok' " if only_ok else ""
     cypher = (
         f"CALL db.idx.vector.queryNodes('{label}', 'embedding', $k, {_vecf32(embedding)}) "
-        "YIELD node, score RETURN node, score ORDER BY score ASC"
+        f"YIELD node, score {where}RETURN node, score ORDER BY score ASC"
     )
     res = ro_query(cypher, {"k": k})
     out: list[tuple[dict[str, Any], float]] = []

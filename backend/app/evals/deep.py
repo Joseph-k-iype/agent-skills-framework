@@ -8,59 +8,17 @@ Distinct from the six fast rule-based evaluators. On demand, an LLM:
 4. judges both answers and scores them 0-10.
 
 The headline metric is *effectiveness* — does the skill improve answers vs. no
-skill (per-case delta + win-rate). Requires a chat-capable provider; with the
-local/offline provider it returns a clear "unavailable" report.
+skill (per-case delta + win-rate). Uses a Pydantic AI agent (:mod:`app.evals.agent`)
+for validated structured output and transient-error retries; with no chat-capable
+provider it returns a clear "unavailable" report.
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass, field
 
-from app.core.logging import get_logger
-from app.llm.provider import LLMProvider, get_provider
+from app.evals.agent import EvalAgent
 from app.okf.concept import Concept
-
-log = get_logger("evals.deep")
-
-_GEN_SYSTEM = (
-    "You generate evaluation test cases for an AI skill. Given the skill, produce "
-    "realistic tasks a user might ask, including tricky edge cases. Return ONLY a JSON "
-    'array of objects: [{"scenario": "<a concrete task/input>", "edge_case": true|false}]. '
-    "No prose."
-)
-
-_PLAIN_SYSTEM = "You are a helpful assistant. Complete the user's task as well as you can."
-
-_JUDGE_SYSTEM = (
-    "You are an impartial judge. You are given a task and two candidate answers: "
-    "answer A was produced WITHOUT a specialist skill, answer B WITH it. Score each "
-    "0-10 for correctness and usefulness. Return ONLY a JSON object: "
-    '{"without_score": <0-10>, "with_score": <0-10>, "note": "<one short sentence>"}.'
-)
-
-
-def _skill_system(concept: Concept) -> str:
-    return (
-        "You are an assistant equipped with the following skill. Apply it to answer the "
-        f"user's task.\n\n# Skill: {concept.title}\n{concept.body}"
-    )
-
-
-def _judge_user(scenario: str, without: str, with_: str) -> str:
-    return (
-        f"TASK:\n{scenario}\n\n"
-        f"ANSWER A (without skill):\n{without}\n\n"
-        f"ANSWER B (with skill):\n{with_}"
-    )
-
-
-def _extract_json(text: str, opener: str, closer: str):
-    start = text.find(opener)
-    end = text.rfind(closer)
-    if start == -1 or end == -1 or end < start:
-        raise ValueError("no JSON found")
-    return json.loads(text[start : end + 1])
 
 
 @dataclass
@@ -90,75 +48,50 @@ class DeepEvalReport:
 
 
 class DeepEvaluator:
-    def __init__(self, provider: LLMProvider | None = None) -> None:
-        self.provider = provider or get_provider()
+    def __init__(self, agent: EvalAgent | None = None) -> None:
+        self.agent = agent or EvalAgent()
 
     async def evaluate(self, concept: Concept, n_cases: int = 5) -> DeepEvalReport:
-        if not self.provider.has_chat:
+        if not self.agent.available:
             return DeepEvalReport(
                 available=False,
                 reason=(
-                    "Deep evaluation needs a chat-capable LLM provider. Set "
-                    "settings.llm_provider (anthropic/openai/openrouter) and a key."
+                    "Deep evaluation needs a chat-capable LLM provider. Set an "
+                    "OpenRouter API key (settings.openrouter_api_key) to enable it."
                 ),
                 summary="Unavailable — no chat-capable provider configured.",
             )
 
-        cases = await self._generate_cases(concept, n_cases)
+        cases = await self.agent.generate_cases(concept, n_cases)
         results: list[DeepCase] = []
         skipped = 0
         for spec in cases:
-            scenario = str(spec.get("scenario", "")).strip()
+            scenario = spec.scenario.strip()
             if not scenario:
                 continue
-            without = await self.provider.chat(_PLAIN_SYSTEM, scenario)
-            with_ = await self.provider.chat(_skill_system(concept), scenario)
+            without = await self.agent.answer_plain(scenario)
+            with_ = await self.agent.answer_with_skill(concept, scenario)
             # A failed/rate-limited call returns None — don't score it 0 (that
             # would falsely look like a regression). Skip and report it instead.
             if without is None or with_ is None:
                 skipped += 1
                 continue
-            verdict = self._parse_verdict(
-                await self.provider.chat(_JUDGE_SYSTEM, _judge_user(scenario, without, with_))
-            )
+            verdict = await self.agent.judge(scenario, without, with_)
             if verdict is None:
                 skipped += 1
                 continue
-            with_score, without_score, note = verdict
             results.append(
                 DeepCase(
                     scenario=scenario,
-                    is_edge_case=bool(spec.get("edge_case", False)),
-                    with_score=with_score,
-                    without_score=without_score,
-                    delta=round(with_score - without_score, 2),
-                    note=note,
+                    is_edge_case=spec.edge_case,
+                    with_score=verdict.with_score,
+                    without_score=verdict.without_score,
+                    delta=round(verdict.with_score - verdict.without_score, 2),
+                    note=verdict.note,
                 )
             )
 
         return self._aggregate(results, skipped)
-
-    async def _generate_cases(self, concept: Concept, n_cases: int) -> list[dict]:
-        prompt = (
-            f"Skill title: {concept.title}\nSkill type: {concept.type}\n\n"
-            f"{concept.body}\n\nGenerate exactly {n_cases} test cases."
-        )
-        raw = await self.provider.chat(_GEN_SYSTEM, prompt)
-        try:
-            data = _extract_json(raw or "", "[", "]")
-            return [d for d in data if isinstance(d, dict)][:n_cases]
-        except Exception as exc:
-            log.warning("deep_eval_case_parse_failed", error=str(exc))
-            return []
-
-    def _parse_verdict(self, raw: str | None) -> tuple[float, float, str | None] | None:
-        try:
-            obj = _extract_json(raw or "", "{", "}")
-            with_score = float(obj.get("with_score", 0))
-            without_score = float(obj.get("without_score", 0))
-            return with_score, without_score, obj.get("note")
-        except Exception:
-            return None
 
     def _aggregate(self, cases: list[DeepCase], skipped: int = 0) -> DeepEvalReport:
         if not cases:

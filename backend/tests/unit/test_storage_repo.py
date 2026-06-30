@@ -61,3 +61,57 @@ def test_tag_does_not_raise(repo):
 def test_traversal_is_blocked(repo):
     with pytest.raises(ValueError):
         repo.write_file("../escape.md", "nope", "bad", "admin")
+
+
+def test_rewrite_identical_content_is_idempotent(repo):
+    """Re-saving byte-identical content must not crash on an empty commit."""
+    sha1 = repo.write_file("a/x.md", "# same", "add x", "admin")
+    sha2 = repo.write_file("a/x.md", "# same", "noop edit", "admin")
+    # No new commit is created when nothing changed; HEAD is unchanged.
+    assert sha2 == sha1
+    assert len(repo.history("a/x.md")) == 1
+
+
+def test_add_dir_twice_is_idempotent(repo):
+    """Re-adding an existing directory must not crash on an empty commit."""
+    repo.add_dir("folder", "mk folder", "admin")
+    repo.add_dir("folder", "mk folder again", "admin")
+
+
+def test_git_error_surfaces_stderr(repo):
+    """A failing git call must raise with git's stderr, not an opaque error."""
+    with pytest.raises(RuntimeError) as exc:
+        repo.delete_path("does/not/exist.md", "rm ghost", "admin")
+    assert "git" in str(exc.value).lower()
+
+
+def test_read_file_at_returns_old_content(repo):
+    repo.write_file("a/x.md", "v1", "add", "admin")
+    repo.write_file("a/x.md", "v2", "edit", "admin")
+    assert repo.read_file_at("a/x.md", "HEAD~1") == "v1"
+    assert repo.read_file_at("a/x.md", "HEAD") == "v2"
+
+
+def test_diff_shows_change(repo):
+    repo.write_file("a/x.md", "v1\n", "add", "admin")
+    repo.write_file("a/x.md", "v2\n", "edit", "admin")
+    d = repo.diff("a/x.md", "HEAD~1", "HEAD")
+    assert "-v1" in d and "+v2" in d
+
+
+def test_restore_reverts_as_new_commit(repo):
+    repo.write_file("a/x.md", "v1", "add", "admin")
+    repo.write_file("a/x.md", "v2", "edit", "admin")
+    repo.restore("a/x.md", "HEAD~1", "restore to v1", "admin")
+    assert repo.read_file("a/x.md") == "v1"  # content reverted
+    hist = repo.history("a/x.md")
+    assert len(hist) == 3 and hist[0]["message"] == "restore to v1"  # non-destructive
+
+
+def test_list_tags_parses_publish_subject(repo):
+    repo.write_file("a/x.md", "v1", "add", "admin")
+    repo.tag("a-x-v1.0.0", "publish a/x.md v1.0.0")
+    tags = repo.list_tags()
+    assert any(
+        t["name"] == "a-x-v1.0.0" and t["subject"] == "publish a/x.md v1.0.0" for t in tags
+    )

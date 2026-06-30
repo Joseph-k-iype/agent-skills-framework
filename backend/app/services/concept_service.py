@@ -19,6 +19,7 @@ from app.schemas.concept import (
     VersionEntry,
 )
 from app.services.audit_service import AuditService
+from app.services.eval_history import record_eval_run
 from app.services.index_service import IndexService, is_reserved
 from app.storage import paths
 from app.storage.repo import BundleRepo
@@ -109,7 +110,17 @@ class ConceptService:
         concept = parse_concept(path, bundle.read_file(path))
         bundle_files = [p for p in bundle.list_files(".md")]
         report = await EvalSupervisor().evaluate(concept, bundle_files)
-        return report.to_dict()
+        out = report.to_dict()
+        await record_eval_run(
+            workspace_id=workspace_id,
+            concept_path=path,
+            kind="fast",
+            score=out.get("overall_score"),
+            passed=out.get("passed"),
+            payload=out,
+            actor_id=self.user.id,
+        )
+        return out
 
     async def deep_evaluate(self, workspace_id: str, path: str, n_cases: int = 5) -> dict:
         """Agentic LLM-as-judge evaluation (generate cases, with/without, score)."""
@@ -120,18 +131,105 @@ class ConceptService:
             raise NotFoundError("Concept not found")
         concept = parse_concept(path, bundle.read_file(path))
         report = await DeepEvaluator().evaluate(concept, n_cases=n_cases)
-        return report.to_dict()
+        out = report.to_dict()
+        if out.get("available"):
+            await record_eval_run(
+                workspace_id=workspace_id,
+                concept_path=path,
+                kind="deep",
+                score=out.get("effectiveness_avg"),
+                summary=out.get("summary"),
+                payload=out,
+                actor_id=self.user.id,
+            )
+        return out
+
+    # ── interactive evaluation (grade vs expected) ──
+    def _concept_or_404(self, workspace_id: str, path: str) -> Concept:
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        return parse_concept(path, bundle.read_file(path))
+
+    def get_eval_cases(self, workspace_id: str, path: str) -> list[dict]:
+        """Load the versioned eval suite for a concept (empty list if none)."""
+        from app.okf import eval_cases
+
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        cpath = eval_cases.cases_path(path)
+        if not bundle.exists_file(cpath):
+            return []
+        return eval_cases.parse_cases(bundle.read_file(cpath))
+
+    def save_eval_cases(self, workspace_id: str, path: str, cases: list[dict]) -> list[dict]:
+        """Persist the eval suite as a git-versioned sibling file."""
+        from app.okf import eval_cases
+
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        cpath = eval_cases.cases_path(path)
+        bundle.write_file(
+            cpath, eval_cases.dump_cases(cases), f"update eval cases {cpath}", self.user.id
+        )
+        return eval_cases.parse_cases(bundle.read_file(cpath))
+
+    async def suggest_eval_cases(self, workspace_id: str, path: str, n: int = 5) -> list[dict]:
+        """LLM-drafted {input, expected} cases; expected is blank when it can't infer."""
+        from app.evals.agent import EvalAgent
+
+        concept = self._concept_or_404(workspace_id, path)
+        drafts = await EvalAgent().suggest_cases(concept, n)
+        return [{"input": d.input, "expected": d.expected} for d in drafts]
+
+    async def grade_eval(self, workspace_id: str, path: str, cases: list[dict]) -> dict:
+        """Run the skill on each case and grade actual output vs expected."""
+        from app.evals.grade import GradeEvaluator
+
+        concept = self._concept_or_404(workspace_id, path)
+        report = await GradeEvaluator().evaluate(concept, cases)
+        out = report.to_dict()
+        if out.get("available") and out.get("cases"):
+            await record_eval_run(
+                workspace_id=workspace_id,
+                concept_path=path,
+                kind="grade",
+                score=round(float(out.get("pass_rate", 0.0)) * 100, 1),
+                summary=out.get("summary"),
+                payload={k: v for k, v in out.items() if k != "cases"},
+                actor_id=self.user.id,
+            )
+        return out
 
     def graph(self, workspace_id: str) -> dict:
         """The workspace concept graph (nodes + reference edges) for visualization."""
         return self.index.repo.graph(workspace_id)
+
+    async def reindex(self, workspace_id: str) -> dict:
+        """Rebuild the graph projection from files and heal any degraded embeddings."""
+        result = await self.index.reindex_workspace(workspace_id)
+        healed = await self.index.embed_pending(workspace_id)
+        return {
+            "documents": result.documents,
+            "references": result.references,
+            "embedded": result.embedded + healed,
+            "pending": len(self.index.repo.pending_embedding_paths(workspace_id)),
+            "orphans": result.orphans,
+        }
 
     def neighborhood(self, workspace_id: str, path: str) -> dict | None:
         return self.index.repo.neighborhood(workspace_id=workspace_id, path=path)
 
     async def search(self, workspace_id: str, q: str, k: int = 10) -> list[dict]:
         """Semantic search over the workspace's concept projection."""
-        vec = await self.index.provider.embed_one(q)
+        vec, is_real = await self.index.provider.embed_one_checked(q)
+        if not is_real:
+            # The query embedding degraded (rate-limited); a hash vector can't be
+            # compared against the real stored vectors, so return nothing rather
+            # than misleading matches. The caller can retry.
+            return []
         hits = self.index.repo.search(workspace_id=workspace_id, embedding=vec, k=k)
         results = []
         for props, score in hits:
@@ -285,6 +383,14 @@ class ConceptService:
         # Tag name encodes the file so multiple concepts can be versioned in one repo.
         tag = f"{paths.slugify(path.removesuffix('.md'))}-v{version}"
         bundle.tag(tag, f"publish {path} v{version}")
+        # Project the published version into the graph (Concept)-[:HAS_VERSION]->(Version).
+        self.index.rebuild_versions(workspace_id, bundle)
+        # List it in the marketplace catalog (idempotent per concept+version).
+        from app.services.marketplace_service import MarketplaceService
+
+        await MarketplaceService(self.db, self.user).upsert_on_publish(
+            workspace_id=workspace_id, path=path, version=version
+        )
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.CONCEPT_PUBLISHED,
@@ -292,5 +398,44 @@ class ConceptService:
             resource_id=path,
             workspace_id=workspace_id,
             payload={"version": version, "tag": tag},
+        )
+        return self.get(workspace_id, path)
+
+    # ── version management (history / preview / diff / restore) ──
+    def versions(self, workspace_id: str, path: str) -> list[dict]:
+        """Published-version lineage for a concept (from the graph projection)."""
+        self._concept_or_404(workspace_id, path)
+        return self.index.repo.versions_for(workspace_id=workspace_id, path=path)
+
+    def version_content(self, workspace_id: str, path: str, ref: str) -> dict:
+        """Read-only snapshot of a concept as of a git ref (commit sha or tag)."""
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        raw = bundle.read_file_at(path, ref)
+        c = parse_concept(path, raw)
+        return {"path": path, "ref": ref, "title": c.title, "body": c.body, "content": raw}
+
+    def diff_versions(self, workspace_id: str, path: str, a: str, b: str) -> dict:
+        """Unified diff of a concept between two refs."""
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        return {"path": path, "a": a, "b": b, "diff": bundle.diff(path, a, b)}
+
+    async def restore_version(self, workspace_id: str, path: str, ref: str) -> ConceptOut:
+        """Restore a past version's content as a new commit, then re-index."""
+        bundle = self._bundle(workspace_id)
+        if not bundle.exists or not bundle.exists_file(path):
+            raise NotFoundError("Concept not found")
+        bundle.restore(path, ref, f"restore {path} from {ref}", self.user.id)
+        await self.index.index_concept(workspace_id, path)
+        await self.audit.record(
+            actor_id=self.user.id,
+            action=EventType.CONCEPT_UPDATED,
+            resource_type="Concept",
+            resource_id=path,
+            workspace_id=workspace_id,
+            payload={"restored_from": ref},
         )
         return self.get(workspace_id, path)

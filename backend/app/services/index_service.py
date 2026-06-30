@@ -91,10 +91,20 @@ class IndexService:
 
         embedded = 0
         if concepts:
-            vectors = await self.provider.embed([c.embedding_text() for c in concepts])
+            vectors, is_real = await self.provider.embed_checked(
+                [c.embedding_text() for c in concepts]
+            )
             for c, vec in zip(concepts, vectors, strict=True):
-                self.repo.set_embedding(workspace_id=workspace_id, path=c.path, vec=vec)
-                embedded += 1
+                if is_real:
+                    self.repo.set_embedding(workspace_id=workspace_id, path=c.path, vec=vec)
+                    embedded += 1
+                else:
+                    # Degraded fallback (e.g. rate-limited) — leave it pending for
+                    # the heal pass rather than poisoning search with a hash vector.
+                    self.repo.mark_embedding_pending(workspace_id=workspace_id, path=c.path)
+
+        # Rebuild published-version nodes from git tags (cleared above).
+        self.rebuild_versions(workspace_id, bundle)
 
         log.info(
             "workspace_reindexed",
@@ -121,14 +131,76 @@ class IndexService:
         c = parse_concept(path, bundle.read_file(path))
         ts = _now()
         self._upsert(workspace_id, c, ts)
+        # Rebuild this node's outgoing references from scratch so renamed/removed
+        # links don't leave stale edges behind.
+        self.repo.clear_references_from(workspace_id=workspace_id, path=c.path)
         valid = {p for p in bundle.list_files(".md") if not is_reserved(p)}
         for link in c.links:
             if link in valid:
                 self.repo.create_reference(
                     workspace_id=workspace_id, from_path=c.path, to_path=link
                 )
-        vec = await self.provider.embed_one(c.embedding_text())
-        self.repo.set_embedding(workspace_id=workspace_id, path=path, vec=vec)
+        vec, is_real = await self.provider.embed_one_checked(c.embedding_text())
+        if is_real:
+            self.repo.set_embedding(workspace_id=workspace_id, path=path, vec=vec)
+        else:
+            self.repo.mark_embedding_pending(workspace_id=workspace_id, path=path)
+
+    async def embed_pending(self, workspace_id: str) -> int:
+        """Re-embed every node whose embedding is missing/degraded. Returns count healed.
+
+        Safe to call repeatedly (idempotent) and off the request path — used both by
+        the post-save background heal and the manual reindex button.
+        """
+        paths = self.repo.pending_embedding_paths(workspace_id)
+        if not paths:
+            return 0
+        bundle = BundleRepo(workspace_id)
+        if not bundle.exists:
+            return 0
+        healed = 0
+        for path in paths:
+            if is_reserved(path) or not bundle.exists_file(path):
+                continue
+            c = parse_concept(path, bundle.read_file(path))
+            vec, is_real = await self.provider.embed_one_checked(c.embedding_text())
+            if is_real:
+                self.repo.set_embedding(workspace_id=workspace_id, path=path, vec=vec)
+                healed += 1
+        if healed:
+            log.info("embeddings_healed", workspace_id=workspace_id, healed=healed)
+        return healed
+
+    @staticmethod
+    def _parse_publish_tag(subject: str) -> tuple[str, str] | None:
+        """``publish <path> v<version>`` → ``(path, version)`` (else None)."""
+        prefix = "publish "
+        if not subject.startswith(prefix) or " v" not in subject:
+            return None
+        path, version = subject[len(prefix) :].rsplit(" v", 1)
+        path, version = path.strip(), version.strip()
+        return (path, version) if path and version else None
+
+    def rebuild_versions(self, workspace_id: str, bundle: BundleRepo | None = None) -> int:
+        """Recreate Version nodes from publish tags (so they survive a reindex)."""
+        bundle = bundle or BundleRepo(workspace_id)
+        if not bundle.exists:
+            return 0
+        count = 0
+        for tag in bundle.list_tags():
+            parsed = self._parse_publish_tag(tag["subject"])
+            if not parsed:
+                continue
+            path, version = parsed
+            self.repo.upsert_version(
+                workspace_id=workspace_id,
+                path=path,
+                version=version,
+                tag=tag["name"],
+                ts=tag["ts"],
+            )
+            count += 1
+        return count
 
     def remove_concept(self, workspace_id: str, path: str) -> None:
         self.repo.delete_concept(workspace_id=workspace_id, path=path)

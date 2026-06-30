@@ -65,6 +65,27 @@ def require_permission(code: str):
     return _dep
 
 
+async def require_api_key(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUser:
+    """Authenticate an SDK request by API key (``Authorization: Bearer sk_live_…``)."""
+    from app.auth.rbac import permissions_for
+    from app.repositories.user_repo import UserRepository
+    from app.services.api_key_service import ApiKeyService
+
+    if creds is None or not creds.credentials.startswith("sk_"):
+        raise UnauthorizedError("Missing or malformed API key")
+    user_id = await ApiKeyService(db).authenticate(creds.credentials)
+    if user_id is None:
+        raise UnauthorizedError("Invalid or revoked API key")
+    user = await UserRepository(db).get_by_id(user_id)
+    if user is None:
+        raise UnauthorizedError("API key owner not found")
+    role = user.role.name if user.role else ""
+    return CurrentUser(id=str(user.id), role=role, permissions=permissions_for(role))
+
+
 def client_meta(request: Request) -> dict[str, str | None]:
     return {
         "ip": request.client.host if request.client else None,

@@ -62,6 +62,16 @@ class ConceptGraphRepository:
     def set_embedding(self, *, workspace_id: str, path: str, vec: list[float]) -> None:
         client.query(Q.SET_EMBEDDING, {"key": make_key(workspace_id, path), "vec": vec})
 
+    def mark_embedding_pending(self, *, workspace_id: str, path: str) -> None:
+        client.query(Q.MARK_EMBEDDING_PENDING, {"key": make_key(workspace_id, path)})
+
+    def pending_embedding_paths(self, workspace_id: str) -> list[str]:
+        rows = _rows(client.ro_query(Q.PENDING_EMBEDDINGS, {"workspace_id": workspace_id}))
+        return [r[0] for r in rows if r and r[0]]
+
+    def clear_references_from(self, *, workspace_id: str, path: str) -> None:
+        client.query(Q.CLEAR_REFERENCES_FROM, {"key": make_key(workspace_id, path)})
+
     def create_reference(self, *, workspace_id: str, from_path: str, to_path: str) -> None:
         client.query(
             Q.CREATE_REFERENCE,
@@ -107,7 +117,7 @@ class ConceptGraphRepository:
     def search(
         self, *, workspace_id: str, embedding: list[float], k: int
     ) -> list[tuple[dict, float]]:
-        results = vector.query_nodes("Concept", embedding, k)
+        results = vector.query_nodes("Concept", embedding, k, only_ok=True)
         out: list[tuple[dict, float]] = []
         for props, score in results:
             props.pop("embedding", None)
@@ -120,12 +130,63 @@ class ConceptGraphRepository:
         rows = _rows(client.ro_query(Q.WORKSPACE_GRAPH, {"workspace_id": workspace_id}))
         nodes = []
         edges = []
-        for path, title, ctype, targets in rows:
-            nodes.append({"path": path, "title": title, "type": ctype})
+        for path, title, ctype, description, runtime, versions, targets in rows:
+            nodes.append(
+                {
+                    "path": path,
+                    "title": title,
+                    "type": ctype,
+                    "description": description,
+                    "runtime": runtime,
+                    "versions": int(versions or 0),
+                }
+            )
             for t in targets or []:
                 if t:
                     edges.append({"source": path, "target": t})
         return {"nodes": nodes, "edges": edges}
+
+    def analytics(self, workspace_id: str) -> dict:
+        """Graph-shape insights for the dashboard: types, hubs, orphans, totals."""
+        types = [
+            {"type": r[0], "count": int(r[1])}
+            for r in _rows(client.ro_query(Q.TYPE_COUNTS, {"workspace_id": workspace_id}))
+        ]
+        hubs = [
+            {"path": r[0], "title": r[1], "degree": int(r[2])}
+            for r in _rows(client.ro_query(Q.HUBS, {"workspace_id": workspace_id, "limit": 8}))
+        ]
+        orphans = [
+            {"path": r[0], "title": r[1]}
+            for r in _rows(client.ro_query(Q.ORPHANS, {"workspace_id": workspace_id, "limit": 20}))
+        ]
+        return {
+            "concepts": self.count(workspace_id),
+            "references": self.count_references(workspace_id),
+            "types": types,
+            "hubs": hubs,
+            "orphans": orphans,
+        }
+
+    def upsert_version(
+        self, *, workspace_id: str, path: str, version: str, tag: str, ts: str
+    ) -> None:
+        client.query(
+            Q.UPSERT_VERSION,
+            {
+                "concept_key": make_key(workspace_id, path),
+                "version_key": f"{make_key(workspace_id, path)}::v{version}",
+                "workspace_id": workspace_id,
+                "path": path,
+                "version": version,
+                "tag": tag,
+                "ts": ts,
+            },
+        )
+
+    def versions_for(self, *, workspace_id: str, path: str) -> list[dict]:
+        rows = _rows(client.ro_query(Q.VERSIONS_FOR, {"key": make_key(workspace_id, path)}))
+        return [{"version": r[0], "tag": r[1], "ts": r[2]} for r in rows]
 
     def neighborhood(self, *, workspace_id: str, path: str) -> dict | None:
         rows = _rows(client.ro_query(Q.NEIGHBORHOOD, {"key": make_key(workspace_id, path)}))
