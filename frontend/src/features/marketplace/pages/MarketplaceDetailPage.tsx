@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { tokens } from "@/app/theme/tokens";
 import { MarkdownPreview } from "@/features/concepts/components/MarkdownPreview";
+import { RADIUS, storefrontType, swatchStyle } from "@/features/marketplace/storefront";
+import { categoryAccentFor } from "@/features/marketplace/theme";
 import { useAuthStore } from "@/stores/authStore";
 import { usePublicListing, type VersionRef } from "../api/publicMarketplaceApi";
 
@@ -103,59 +105,47 @@ export default function MarketplaceDetailPage() {
       </Button>
 
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+      <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: `1px solid ${tokens.color.line}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          <span aria-hidden style={swatchStyle(categoryAccentFor(category))} />
+          <span style={storefrontType.eyebrow}>{category}</span>
           {d.featured && (
             <span
-              style={{
-                font: "600 9px " + tokens.font.sans,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: tokens.color.accent,
-                background: "rgba(232,33,39,0.08)",
-                padding: "4px 7px",
-                borderRadius: 999,
-              }}
+              aria-label="Featured"
+              title="Featured"
+              style={{ color: tokens.color.accent, fontSize: 13, lineHeight: 1, marginLeft: 2 }}
             >
-              ★ Featured
+              &#10003;
             </span>
           )}
-          <span
-            style={{
-              font: "600 10px " + tokens.font.sans,
-              color: tokens.color.ink2,
-              background: tokens.color.canvas,
-              border: `1px solid ${tokens.color.line}`,
-              padding: "4px 7px",
-              borderRadius: 999,
-              textTransform: "capitalize",
-            }}
-          >
-            {category}
+          <span style={{ ...storefrontType.monoSmall, marginLeft: "auto", textTransform: "uppercase" }}>
+            {d.type}
           </span>
         </div>
 
         <Typography.Title
           level={2}
-          style={{ margin: 0, fontFamily: 'ui-serif, Georgia, "Times New Roman", serif' }}
+          style={{
+            margin: 0,
+            fontFamily: tokens.font.sans,
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+          }}
         >
           {d.title}
         </Typography.Title>
 
         {d.summary && (
-          <Typography.Paragraph style={{ fontSize: 15, color: tokens.color.ink2, marginTop: 8, marginBottom: 12 }}>
+          <Typography.Paragraph style={{ ...storefrontType.body, fontSize: 15, marginTop: 8, marginBottom: 12 }}>
             {d.summary}
           </Typography.Paragraph>
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <span style={{ font: "500 12px " + tokens.font.sans, color: tokens.color.ink2 }}>
+          <span style={{ ...storefrontType.mono, color: tokens.color.ink2 }}>
             @{d.author_id ? d.author_id.slice(0, 8) : "anonymous"}
           </span>
-          <span style={{ font: "600 12px " + tokens.font.sans, color: tokens.color.ink3 }}>★ —</span>
-          <span style={{ font: "400 12px " + tokens.font.sans, color: tokens.color.ink3 }}>
-            {d.downloads} uses
-          </span>
+          <span style={storefrontType.mono}>{d.downloads} uses</span>
 
           {versions.length > 0 ? (
             <Select
@@ -169,7 +159,9 @@ export default function MarketplaceDetailPage() {
               }))}
             />
           ) : (
-            <Tag bordered={false}>v{d.latest_version ?? d.version}</Tag>
+            <Tag bordered={false} style={{ borderRadius: RADIUS, fontFamily: tokens.font.mono }}>
+              v{d.latest_version ?? d.version}
+            </Tag>
           )}
 
           <span
@@ -178,11 +170,11 @@ export default function MarketplaceDetailPage() {
               alignItems: "center",
               gap: 4,
               font: "500 11px " + tokens.font.mono,
-              color: tokens.color.ink2,
+              color: tokens.color.ink,
               background: tokens.color.canvas,
               border: `1px solid ${tokens.color.line}`,
               padding: "3px 4px 3px 9px",
-              borderRadius: 999,
+              borderRadius: RADIUS,
             }}
           >
             sha256:{selectedSha || "—"}
