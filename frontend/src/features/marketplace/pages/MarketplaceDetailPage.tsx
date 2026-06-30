@@ -83,7 +83,7 @@ export default function MarketplaceDetailPage() {
           This skill couldn&apos;t be found.
         </Typography.Text>
         <div style={{ marginTop: 12 }}>
-          <Link to="/marketplace" style={{ color: tokens.color.accent, fontSize: 13 }}>
+          <Link to="/marketplace" style={{ color: tokens.color.ink, fontSize: 13 }}>
             ← Back to marketplace
           </Link>
         </div>
