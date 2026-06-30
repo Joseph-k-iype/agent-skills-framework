@@ -1,6 +1,6 @@
-import { Button, Layout, Typography } from "antd";
+import { Layout, Typography } from "antd";
 import { useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { tokens } from "@/app/theme/tokens";
 import { CommandPalette } from "@/shared/components/CommandPalette";
 
@@ -8,7 +8,6 @@ const { Header, Content } = Layout;
 
 /** Public (logged-out) shell: top nav + ⌘K command palette, wraps the marketplace pages. */
 export function PublicLayout() {
-  const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   return (
@@ -101,17 +100,31 @@ export function PublicLayout() {
           <Link to="/docs" style={{ color: tokens.color.ink2, fontSize: 14 }}>
             Docs
           </Link>
-          <Button
-            onClick={() => navigate("/login")}
+          <Link
+            to="/login"
             style={{
+              display: "inline-flex",
+              alignItems: "center",
+              height: 32,
+              padding: "0 15px",
               background: tokens.color.ink,
               color: tokens.color.surface,
               border: "none",
               borderRadius: tokens.radius,
+              fontSize: 14,
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = tokens.color.ink;
+              e.currentTarget.style.color = tokens.color.surface;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = tokens.color.ink;
+              e.currentTarget.style.color = tokens.color.surface;
             }}
           >
             Sign in
-          </Button>
+          </Link>
         </div>
       </Header>
 
