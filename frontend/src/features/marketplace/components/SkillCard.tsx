@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { tokens } from "@/app/theme/tokens";
 import type { PublicListing } from "@/features/marketplace/api/publicMarketplaceApi";
-import { accentFor } from "@/features/marketplace/theme";
+import { categoryAccentFor } from "@/features/marketplace/theme";
 import { RADIUS, cardBorder, storefrontType, swatchStyle } from "@/features/marketplace/storefront";
 
 function shortAuthor(authorId?: string | null): string {
@@ -45,7 +45,7 @@ export function SkillCard({ listing }: { listing: PublicListing }) {
     >
       {/* Top row: category swatch + mono label, featured tick (the only red), mono type code */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <span aria-hidden style={swatchStyle(accentFor(category))} />
+        <span aria-hidden style={swatchStyle(categoryAccentFor(listing.category ?? listing.type))} />
         <span style={storefrontType.eyebrow}>{category}</span>
         {listing.featured && (
           <span

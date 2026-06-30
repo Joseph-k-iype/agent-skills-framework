@@ -40,6 +40,15 @@ export default function MarketplacePage() {
   const listings = usePublicMarketplace(q, undefined, category, sort);
   const data = useMemo(() => listings.data ?? [], [listings.data]);
 
+  // Stable total across the whole catalog — does not fluctuate while
+  // typing/filtering, unlike the filtered `data.length` below. Falls back
+  // to the filtered count only until categories have loaded.
+  const totalCount = useMemo(() => {
+    const cats = categories.data;
+    if (!cats || cats.length === 0) return data.length;
+    return cats.reduce((sum, c) => sum + c.count, 0);
+  }, [categories.data, data.length]);
+
   return (
     <div style={{ paddingBottom: 60 }}>
       <MasonryResponsiveStyle />
@@ -62,7 +71,7 @@ export default function MarketplacePage() {
             color: tokens.color.ink3,
           }}
         >
-          {data.length} skills · content-addressed
+          {totalCount} skills · content-addressed
         </div>
 
         <div
