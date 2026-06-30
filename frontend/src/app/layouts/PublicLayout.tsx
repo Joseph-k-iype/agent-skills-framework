@@ -2,13 +2,21 @@ import { Layout, Typography } from "antd";
 import { useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 import { tokens } from "@/app/theme/tokens";
+import { useAuthStore } from "@/stores/authStore";
 import { CommandPalette } from "@/shared/components/CommandPalette";
+import { UserMenu } from "./UserMenu";
 
 const { Header, Content } = Layout;
 
-/** Public (logged-out) shell: top nav + ⌘K command palette, wraps the marketplace pages. */
+/**
+ * Public marketplace shell: top nav + ⌘K command palette, wraps the marketplace
+ * pages. Auth-aware: a logged-in user keeps their identity (account menu + a way
+ * back to the dashboard) instead of being shown "Sign in" — so visiting the
+ * public marketplace from inside the app never looks like a logout.
+ */
 export function PublicLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
 
   return (
     <Layout style={{ minHeight: "100vh", background: tokens.color.canvas }}>
@@ -97,31 +105,32 @@ export function PublicLayout() {
           <Link to="/marketplace" style={{ color: tokens.color.ink2, fontSize: 14 }}>
             Browse
           </Link>
-          <Link
-            to="/login"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              height: 32,
-              padding: "0 15px",
-              background: tokens.color.ink,
-              color: tokens.color.surface,
-              border: "none",
-              borderRadius: tokens.radius,
-              fontSize: 14,
-              textDecoration: "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = tokens.color.ink;
-              e.currentTarget.style.color = tokens.color.surface;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = tokens.color.ink;
-              e.currentTarget.style.color = tokens.color.surface;
-            }}
-          >
-            Sign in
-          </Link>
+          {user ? (
+            <>
+              <Link to="/dashboard" style={{ color: tokens.color.ink2, fontSize: 14 }}>
+                Dashboard
+              </Link>
+              <UserMenu />
+            </>
+          ) : (
+            <Link
+              to="/login"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                height: 32,
+                padding: "0 15px",
+                background: tokens.color.ink,
+                color: tokens.color.surface,
+                border: "none",
+                borderRadius: tokens.radius,
+                fontSize: 14,
+                textDecoration: "none",
+              }}
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </Header>
 
