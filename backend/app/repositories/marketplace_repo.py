@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import desc, func, select, update
+from sqlalchemy import Text, cast, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MarketplaceListing, SkillVersion, UsageEvent
@@ -70,7 +70,18 @@ class MarketplaceRepository:
             stmt = stmt.where(MarketplaceListing.type == type)
         if q:
             like = f"%{q.lower()}%"
-            stmt = stmt.where(func.lower(MarketplaceListing.title).like(like))
+            # Match title OR summary OR any tag. ``tags`` is a JSONB array
+            # (e.g. ["csv", "graph"]); casting it to text and lower-matching
+            # against it is a simple substring check that works for our
+            # short, single-word tag vocabulary without needing to unnest
+            # the array in SQL.
+            stmt = stmt.where(
+                or_(
+                    func.lower(MarketplaceListing.title).like(like),
+                    func.lower(MarketplaceListing.summary).like(like),
+                    func.lower(cast(MarketplaceListing.tags, Text)).like(like),
+                )
+            )
         order = {
             "recent": desc(MarketplaceListing.updated_at),
             "newest": desc(MarketplaceListing.created_at),

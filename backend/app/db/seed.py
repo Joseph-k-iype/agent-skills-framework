@@ -20,6 +20,7 @@ from app.auth.rbac import (
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.core.security import hash_password
+from app.db.seed_marketplace import seed_marketplace_demo
 from app.db.session import SessionLocal
 from app.models import Permission, Role, User
 
@@ -80,6 +81,10 @@ async def seed() -> None:
         await _seed_dev_admin(db, roles)
         await db.commit()
     log.info("seed_complete", permissions=len(PERMISSIONS), roles=3)
+
+    # Demo marketplace catalog — independently idempotent, own session/commit.
+    async with SessionLocal() as db:
+        await seed_marketplace_demo(db)
 
 
 def main() -> None:
