@@ -302,7 +302,7 @@ async def seed_marketplace_demo(db: AsyncSession) -> None:
         return
 
     for skill in _DEMO_SKILLS:
-        slug = skill["title"].lower().replace(" ", "-").replace("->", "to")
+        slug = skill["title"].lower().replace(" ", "-")
         frontmatter = {
             "title": skill["title"],
             "type": skill["type"],
