@@ -43,9 +43,9 @@ export function SkillCard({ listing }: { listing: PublicListing }) {
         transition: "border-color 120ms ease",
       }}
     >
-      {/* Top row: category swatch + mono label, featured tick (the only red) */}
+      {/* Top row: category swatch + mono label, featured tick (the only red), mono type code */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <span aria-hidden style={swatchStyle(accentFor(listing.category ?? listing.type))} />
+        <span aria-hidden style={swatchStyle(accentFor(category))} />
         <span style={storefrontType.eyebrow}>{category}</span>
         {listing.featured && (
           <span
@@ -61,6 +61,15 @@ export function SkillCard({ listing }: { listing: PublicListing }) {
             &#10003;
           </span>
         )}
+        <span
+          style={{
+            ...storefrontType.monoSmall,
+            marginLeft: listing.featured ? 6 : "auto",
+            textTransform: "uppercase",
+          }}
+        >
+          {listing.type}
+        </span>
       </div>
 
       {/* Title */}
@@ -117,7 +126,7 @@ export function SkillCard({ listing }: { listing: PublicListing }) {
         >
           {shortAuthor(listing.author_id).charAt(0).toUpperCase()}
         </span>
-        <span style={{ ...storefrontType.monoSmall, color: tokens.color.ink2 }}>
+        <span style={{ ...storefrontType.monoSmall, color: tokens.color.ink3 }}>
           @{shortAuthor(listing.author_id)}
         </span>
         {shortSha && (

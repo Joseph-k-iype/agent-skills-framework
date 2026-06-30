@@ -67,8 +67,3 @@ export function swatchStyle(color: string): CSSProperties {
     flexShrink: 0,
   };
 }
-
-/** Uppercase mono label style for category/type codes. */
-export const monoLabel: CSSProperties = {
-  ...storefrontType.eyebrow,
-};
