@@ -172,8 +172,9 @@ class MarketplaceService:
         if not listing or not listing.is_public:
             raise NotFoundError("Listing not found")
         out = _listing_dict(listing)
-        out["content"] = await self._read_published(listing)
         versions = await self.repo.list_versions(listing.id)
+        latest_content = versions[0].content if versions and versions[0].content else None
+        out["content"] = latest_content if latest_content else await self._read_published(listing)
         out["versions"] = [
             {
                 "version": v.version,

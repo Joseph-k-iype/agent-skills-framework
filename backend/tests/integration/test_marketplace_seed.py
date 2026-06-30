@@ -19,6 +19,7 @@ from app.db.seed_marketplace import DEMO_WORKSPACE_ID, seed_marketplace_demo
 from app.db.session import SessionLocal
 from app.models import MarketplaceListing
 from app.repositories.marketplace_repo import MarketplaceRepository
+from app.services.marketplace_service import MarketplaceService
 
 pytestmark = pytest.mark.asyncio
 
@@ -126,3 +127,32 @@ async def test_search_matches_summary_and_tag_not_just_title(clean_demo):
         assert any(x.id == tag_target.id for x in by_tag), (
             f"expected listing {tag_target.title!r} to match q={tag!r} via tags"
         )
+
+
+async def test_public_get_serves_stored_skill_version_content(clean_demo):
+    """Demo listings have no on-disk bundle (only a SkillVersion.content
+    snapshot), so the public detail endpoint must fall back to that stored
+    content instead of returning an empty README from BundleRepo."""
+    async with SessionLocal() as db:
+        await seed_marketplace_demo(db)
+
+    async with SessionLocal() as db:
+        listing = (
+            await db.scalars(
+                select(MarketplaceListing).where(
+                    MarketplaceListing.source_workspace_id == DEMO_WORKSPACE_ID,
+                    MarketplaceListing.title == "Geocoder",
+                )
+            )
+        ).first()
+        assert listing is not None
+
+        service = MarketplaceService(db, None)
+        out = await service.public_get(str(listing.id))
+
+        assert out["content"], "expected non-empty content for demo listing"
+        assert "# Geocoder" in out["content"]
+        assert "Resolve addresses and place names to coordinates" in out["content"]
+        # is_public gate and versions payload remain intact.
+        assert "versions" in out and len(out["versions"]) == 1
+        assert out["versions"][0]["version"] == 1
