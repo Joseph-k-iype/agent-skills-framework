@@ -6,10 +6,15 @@ from fastapi import APIRouter
 
 from app.api.v1.routers import (
     admin,
+    analytics,
+    api_keys,
     auth,
     concepts,
     folders,
     health,
+    marketplace,
+    public,
+    sdk,
     workflows,
     workspaces,
 )
@@ -24,3 +29,8 @@ api_router.include_router(
 api_router.include_router(folders.router, prefix="/folders", tags=["folders"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(workflows.router, prefix="/workflows", tags=["workflows"])
+api_router.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])
+api_router.include_router(public.router, prefix="/public", tags=["public"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(api_keys.router, prefix="/api-keys", tags=["api-keys"])
+api_router.include_router(sdk.router, prefix="/sdk", tags=["sdk"])
