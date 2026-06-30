@@ -6,14 +6,20 @@ once (safe to run on every app start / ``python -m app.db.seed``), and that
 just the title (the storefront search should find a skill called "Geocoder"
 when searching for a word that only appears in its summary or tags).
 
-Cleans up the demo rows it relies on in its own teardown so the suite never
-leaves seed pollution behind (mirrors the dev-DB hygiene goal of this task).
+These tests rely on ``seed_marketplace_demo`` being idempotent (re-running it
+is always a no-op once the demo catalog exists) plus the autouse
+``_isolate_marketplace_listings`` fixture in ``conftest.py``, which deletes
+only the rows a test newly creates. That means: if the permanent demo catalog
+already exists in the dev DB, ``seed_marketplace_demo`` here is a no-op and
+nothing is cleaned up at teardown (the demo survives); if it doesn't exist
+yet, this test creates it and the autouse fixture removes it afterwards. No
+explicit demo cleanup is needed (or wanted) in this file.
 """
 
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.db.seed_marketplace import DEMO_WORKSPACE_ID, seed_marketplace_demo
 from app.db.session import SessionLocal
@@ -24,25 +30,7 @@ from app.services.marketplace_service import MarketplaceService
 pytestmark = pytest.mark.asyncio
 
 
-async def _delete_demo_rows() -> None:
-    async with SessionLocal() as db:
-        await db.execute(
-            delete(MarketplaceListing).where(
-                MarketplaceListing.source_workspace_id == DEMO_WORKSPACE_ID
-            )
-        )
-        await db.commit()
-
-
-@pytest.fixture
-async def clean_demo():
-    """Ensure no demo rows exist before the test, and remove any after."""
-    await _delete_demo_rows()
-    yield
-    await _delete_demo_rows()
-
-
-async def test_seed_marketplace_demo_is_idempotent(clean_demo):
+async def test_seed_marketplace_demo_is_idempotent():
     async with SessionLocal() as db:
         await seed_marketplace_demo(db)
 
@@ -86,7 +74,7 @@ async def test_seed_marketplace_demo_is_idempotent(clean_demo):
     assert len(rows_again) == count_first
 
 
-async def test_search_matches_summary_and_tag_not_just_title(clean_demo):
+async def test_search_matches_summary_and_tag_not_just_title():
     async with SessionLocal() as db:
         await seed_marketplace_demo(db)
 
@@ -129,7 +117,7 @@ async def test_search_matches_summary_and_tag_not_just_title(clean_demo):
         )
 
 
-async def test_public_get_serves_stored_skill_version_content(clean_demo):
+async def test_public_get_serves_stored_skill_version_content():
     """Demo listings have no on-disk bundle (only a SkillVersion.content
     snapshot), so the public detail endpoint must fall back to that stored
     content instead of returning an empty README from BundleRepo."""
