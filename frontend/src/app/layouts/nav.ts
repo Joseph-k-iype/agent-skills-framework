@@ -1,8 +1,10 @@
 import {
   AuditOutlined,
+  BarChartOutlined,
   DashboardOutlined,
   DeploymentUnitOutlined,
   FolderOpenOutlined,
+  KeyOutlined,
   SafetyOutlined,
   ShopOutlined,
   TeamOutlined,
@@ -22,6 +24,9 @@ const DEVELOPER_NAV: NavItem[] = [
   { key: "/dashboard", label: "Dashboard", icon: DashboardOutlined },
   { key: "/workspace", label: "Workspace", icon: FolderOpenOutlined },
   { key: "/knowledge", label: "Knowledge Graph", icon: DeploymentUnitOutlined },
+  { key: "/insights", label: "Insights", icon: BarChartOutlined },
+  { key: "/marketplace", label: "Marketplace", icon: ShopOutlined },
+  { key: "/settings/api-keys", label: "API Keys", icon: KeyOutlined },
 ];
 
 const ADMIN_NAV: NavItem[] = [

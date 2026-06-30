@@ -24,6 +24,31 @@ export interface Neighborhood {
   edges: GraphEdge[];
 }
 
+export interface GraphNode {
+  path: string;
+  title: string;
+  type: string;
+  description?: string | null;
+  runtime?: string | null;
+  versions: number;
+}
+export interface GraphLink {
+  source: string;
+  target: string;
+}
+export interface WorkspaceGraph {
+  nodes: GraphNode[];
+  edges: GraphLink[];
+}
+
+export function useWorkspaceGraph(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: ["ws-overview-graph", workspaceId ?? ""],
+    queryFn: () => unwrap<WorkspaceGraph>(http.get(`/workspaces/${workspaceId}/graph`)),
+    enabled: !!workspaceId,
+  });
+}
+
 export function useWorkspaceSearch(
   workspaceId: string | undefined,
   query: string,

@@ -1,5 +1,6 @@
 import { Alert, Button, Empty, List, Progress, Space, Tag, Typography } from "antd";
 import { useEvaluateConcept, type EvalReport } from "../api/conceptApi";
+import { usePersistentState } from "@/shared/hooks/usePersistentState";
 import { tokens } from "@/app/theme/tokens";
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -10,12 +11,21 @@ const SEVERITY_COLOR: Record<string, string> = {
 
 export function EvaluatorPanel({ workspaceId, path }: { workspaceId: string; path: string }) {
   const evaluate = useEvaluateConcept(workspaceId, path);
-  const report = evaluate.data as EvalReport | undefined;
+  // Keep the last result visible across reloads / tab switches.
+  const [stored, setStored] = usePersistentState<EvalReport | null>(
+    `eval:${workspaceId}:${path}`,
+    null,
+  );
+  const report = (evaluate.data ?? stored) ?? undefined;
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 760 }}>
       <Space>
-        <Button type="primary" loading={evaluate.isPending} onClick={() => evaluate.mutate()}>
+        <Button
+          type="primary"
+          loading={evaluate.isPending}
+          onClick={() => evaluate.mutate(undefined, { onSuccess: (data) => setStored(data) })}
+        >
           Run evaluation
         </Button>
         {report && (
@@ -25,6 +35,15 @@ export function EvaluatorPanel({ workspaceId, path }: { workspaceId: string; pat
           </Typography.Text>
         )}
       </Space>
+
+      {evaluate.isError && (
+        <Alert
+          type="error"
+          showIcon
+          message="Evaluation failed"
+          description={(evaluate.error as Error)?.message ?? "The request did not complete."}
+        />
+      )}
 
       {report && report.blocking_issues.length > 0 && (
         <Alert

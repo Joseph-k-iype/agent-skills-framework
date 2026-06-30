@@ -161,10 +161,21 @@ export function useDeleteConcept(workspaceId: string) {
   });
 }
 
+// Evals run LLM calls server-side (often with rate-limit backoff), so they can
+// far exceed the default 30s client timeout. Give them generous per-request
+// budgets; without this the browser aborts and the panel shows nothing.
+const EVAL_TIMEOUT_MS = 120_000;
+const DEEP_EVAL_TIMEOUT_MS = 300_000;
+
 export function useEvaluateConcept(workspaceId: string, path: string) {
   return useMutation({
     mutationFn: () =>
-      unwrap<EvalReport>(http.post(`/workspaces/${workspaceId}/concept/evaluate`, null, { params: { path } })),
+      unwrap<EvalReport>(
+        http.post(`/workspaces/${workspaceId}/concept/evaluate`, null, {
+          params: { path },
+          timeout: EVAL_TIMEOUT_MS,
+        }),
+      ),
   });
 }
 
@@ -195,6 +206,7 @@ export function useDeepEvaluateConcept(workspaceId: string, path: string) {
       unwrap<DeepEvalReport>(
         http.post(`/workspaces/${workspaceId}/concept/deep-evaluate`, null, {
           params: { path, n: n ?? 5 },
+          timeout: DEEP_EVAL_TIMEOUT_MS,
         }),
       ),
   });
@@ -202,6 +214,156 @@ export function useDeepEvaluateConcept(workspaceId: string, path: string) {
 
 export function searchWorkspace(workspaceId: string, q: string) {
   return unwrap<SearchHit[]>(http.get(`/workspaces/${workspaceId}/search`, { params: { q } }));
+}
+
+// ── interactive (grade-vs-expected) evaluation ──
+export interface EvalCase {
+  input: string;
+  expected: string;
+}
+
+export interface GradeCaseResult {
+  input: string;
+  expected: string;
+  actual: string;
+  score: number;
+  passed: boolean;
+  reasoning?: string | null;
+}
+
+export interface GradeReport {
+  available: boolean;
+  reason?: string | null;
+  cases: GradeCaseResult[];
+  skipped: number;
+  missing_expected: number;
+  pass_rate: number;
+  avg_score: number;
+  summary: string;
+}
+
+export function useEvalCases(workspaceId: string, path: string) {
+  return useQuery({
+    queryKey: ["eval-cases", workspaceId, path],
+    queryFn: () =>
+      unwrap<EvalCase[]>(
+        http.get(`/workspaces/${workspaceId}/concept/eval-cases`, { params: { path } }),
+      ),
+    enabled: !!workspaceId && !!path,
+  });
+}
+
+export function useSaveEvalCases(workspaceId: string, path: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cases: EvalCase[]) =>
+      unwrap<EvalCase[]>(
+        http.put(`/workspaces/${workspaceId}/concept/eval-cases`, { cases }, { params: { path } }),
+      ),
+    onSuccess: (data) => qc.setQueryData(["eval-cases", workspaceId, path], data),
+  });
+}
+
+export function useSuggestEvalCases(workspaceId: string, path: string) {
+  return useMutation<EvalCase[], Error, number | void>({
+    mutationFn: (n) =>
+      unwrap<EvalCase[]>(
+        http.post(`/workspaces/${workspaceId}/concept/suggest-eval-cases`, null, {
+          params: { path, n: n ?? 5 },
+          timeout: EVAL_TIMEOUT_MS,
+        }),
+      ),
+  });
+}
+
+export function useGradeEval(workspaceId: string, path: string) {
+  return useMutation<GradeReport, Error, EvalCase[]>({
+    mutationFn: (cases) =>
+      unwrap<GradeReport>(
+        http.post(
+          `/workspaces/${workspaceId}/concept/grade-eval`,
+          { cases },
+          { params: { path }, timeout: DEEP_EVAL_TIMEOUT_MS },
+        ),
+      ),
+  });
+}
+
+export interface ReindexResult {
+  documents: number;
+  references: number;
+  embedded: number;
+  pending: number;
+  orphans: string[];
+}
+
+export function useReindexWorkspace(workspaceId: string | undefined) {
+  return useMutation<ReindexResult, Error, void>({
+    mutationFn: () =>
+      unwrap<ReindexResult>(
+        http.post(`/workspaces/${workspaceId}/reindex`, null, { timeout: DEEP_EVAL_TIMEOUT_MS }),
+      ),
+  });
+}
+
+// ── version management (preview / diff / restore) ──
+export interface ConceptVersion {
+  version: string;
+  tag: string;
+  ts: string;
+}
+
+export interface VersionContent {
+  path: string;
+  ref: string;
+  title: string;
+  body: string;
+  content: string;
+}
+
+export function useConceptVersions(workspaceId: string, path: string) {
+  return useQuery({
+    queryKey: ["concept-versions", workspaceId, path],
+    queryFn: () =>
+      unwrap<ConceptVersion[]>(
+        http.get(`/workspaces/${workspaceId}/concept/versions`, { params: { path } }),
+      ),
+    enabled: !!workspaceId && !!path,
+  });
+}
+
+export function useVersionContent(workspaceId: string, path: string, ref: string | null) {
+  return useQuery({
+    queryKey: ["concept-version", workspaceId, path, ref],
+    queryFn: () =>
+      unwrap<VersionContent>(
+        http.get(`/workspaces/${workspaceId}/concept/version`, { params: { path, ref } }),
+      ),
+    enabled: !!workspaceId && !!path && !!ref,
+  });
+}
+
+export function useConceptDiff(workspaceId: string, path: string) {
+  return useMutation<{ diff: string }, Error, { a: string; b: string }>({
+    mutationFn: ({ a, b }) =>
+      unwrap<{ diff: string }>(
+        http.get(`/workspaces/${workspaceId}/concept/diff`, { params: { path, a, b } }),
+      ),
+  });
+}
+
+export function useRestoreVersion(workspaceId: string, path: string) {
+  const qc = useQueryClient();
+  return useMutation<Concept, Error, string>({
+    mutationFn: (ref) =>
+      unwrap<Concept>(
+        http.post(`/workspaces/${workspaceId}/concept/restore`, null, { params: { path, ref } }),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.one(workspaceId, path) });
+      qc.invalidateQueries({ queryKey: keys.history(workspaceId, path) });
+    },
+  });
 }
 
 export { keys as conceptKeys };

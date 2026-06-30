@@ -1,10 +1,16 @@
 import { Alert, Button, Empty, Space, Statistic, Table, Tag, Typography } from "antd";
 import { useDeepEvaluateConcept, type DeepCase, type DeepEvalReport } from "../api/conceptApi";
+import { usePersistentState } from "@/shared/hooks/usePersistentState";
 import { tokens } from "@/app/theme/tokens";
 
 export function DeepEvalPanel({ workspaceId, path }: { workspaceId: string; path: string }) {
   const deep = useDeepEvaluateConcept(workspaceId, path);
-  const report = deep.data as DeepEvalReport | undefined;
+  // Keep the last result visible across reloads / tab switches.
+  const [stored, setStored] = usePersistentState<DeepEvalReport | null>(
+    `deepeval:${workspaceId}:${path}`,
+    null,
+  );
+  const report = (deep.data ?? stored) ?? undefined;
 
   const columns = [
     {
@@ -42,10 +48,23 @@ export function DeepEvalPanel({ workspaceId, path }: { workspaceId: string; path
           <b>with</b> and <b>without</b> this skill, then a judge scores them — measuring whether
           the skill actually improves results.
         </Typography.Paragraph>
-        <Button type="primary" loading={deep.isPending} onClick={() => deep.mutate(5)}>
+        <Button
+          type="primary"
+          loading={deep.isPending}
+          onClick={() => deep.mutate(5, { onSuccess: (data) => setStored(data) })}
+        >
           Run deep evaluation
         </Button>
       </div>
+
+      {deep.isError && (
+        <Alert
+          type="error"
+          showIcon
+          message="Deep evaluation failed"
+          description={(deep.error as Error)?.message ?? "The request did not complete."}
+        />
+      )}
 
       {report && !report.available && (
         <Alert type="warning" showIcon message="Deep evaluation unavailable" description={report.reason} />

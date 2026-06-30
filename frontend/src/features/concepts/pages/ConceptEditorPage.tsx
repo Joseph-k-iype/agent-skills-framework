@@ -9,7 +9,6 @@ import {
   Select,
   Space,
   Spin,
-  Steps,
   Tabs,
   Tag,
   Typography,
@@ -18,15 +17,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { tokens } from "@/app/theme/tokens";
-import {
-  useConcept,
-  useConcepts,
-  useConceptHistory,
-  useUpdateConcept,
-} from "../api/conceptApi";
+import { useConcept, useConcepts, useUpdateConcept } from "../api/conceptApi";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { EvaluatorPanel } from "../components/EvaluatorPanel";
 import { DeepEvalPanel } from "../components/DeepEvalPanel";
+import { TestCasesPanel } from "../components/TestCasesPanel";
+import { VersionManager } from "../components/VersionManager";
 
 export default function ConceptEditorPage() {
   const params = useParams();
@@ -37,7 +33,6 @@ export default function ConceptEditorPage() {
 
   const concept = useConcept(workspaceId, path);
   const concepts = useConcepts(workspaceId);
-  const history = useConceptHistory(workspaceId, path);
   const update = useUpdateConcept(workspaceId, path);
 
   const [form] = Form.useForm();
@@ -196,17 +191,7 @@ export default function ConceptEditorPage() {
     </div>
   );
 
-  const historyTab = (
-    <Steps
-      direction="vertical"
-      size="small"
-      current={-1}
-      items={(history.data ?? []).map((h) => ({
-        title: h.message,
-        description: `${h.author} · ${h.ts.slice(0, 19).replace("T", " ")}`,
-      }))}
-    />
-  );
+  const historyTab = <VersionManager workspaceId={workspaceId} path={path} />;
 
   const tabs = [
     { key: "editor", label: "Editor", children: editorTab },
@@ -221,6 +206,11 @@ export default function ConceptEditorPage() {
       key: "deep",
       label: "Deep eval",
       children: <DeepEvalPanel workspaceId={workspaceId} path={path} />,
+    },
+    {
+      key: "testcases",
+      label: "Test cases",
+      children: <TestCasesPanel workspaceId={workspaceId} path={path} />,
     },
     { key: "history", label: "History", children: historyTab },
   ];
