@@ -97,9 +97,6 @@ export function PublicLayout() {
           <Link to="/marketplace" style={{ color: tokens.color.ink2, fontSize: 14 }}>
             Browse
           </Link>
-          <Link to="/docs" style={{ color: tokens.color.ink2, fontSize: 14 }}>
-            Docs
-          </Link>
           <Link
             to="/login"
             style={{
