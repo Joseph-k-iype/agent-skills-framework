@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     # App
-    app_name: str = "EAKSO"
+    app_name: str = "Data Skill Marketplace"
     api_v1_prefix: str = "/api/v1"
     cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",

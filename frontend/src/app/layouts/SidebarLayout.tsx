@@ -42,7 +42,7 @@ export function SidebarLayout() {
         style={{ borderRight: `1px solid ${tokens.color.line}`, position: "sticky", top: 0, height: "100vh" }}
       >
         <div style={{ padding: "20px 24px 12px", letterSpacing: "0.2em", fontSize: 13, color: tokens.color.ink }}>
-          EAKSO
+          Data Skill Marketplace
         </div>
         <Menu
           mode="inline"
@@ -88,7 +88,7 @@ export function TopNavLayout() {
           borderBottom: `1px solid ${tokens.color.line}`,
         }}
       >
-        <Typography.Text style={{ letterSpacing: "0.2em", fontSize: 13 }}>EAKSO</Typography.Text>
+        <Typography.Text style={{ letterSpacing: "0.2em", fontSize: 13 }}>Data Skill Marketplace</Typography.Text>
         <UserMenu />
       </Header>
       <Content style={{ padding: 28, maxWidth: tokens.maxContentWidth, width: "100%", margin: "0 auto" }}>

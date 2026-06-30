@@ -1,5 +1,5 @@
 {
-  "name": "eakso-frontend",
+  "name": "data-skill-marketplace-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
+    "@dagrejs/dagre": "^3.0.0",
     "@tanstack/react-query": "^5.51.0",
     "@xyflow/react": "^12.3.0",
     "antd": "^5.20.0",
@@ -22,6 +23,7 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.26.0",
+    "recharts": "^3.9.0",
     "remark-gfm": "^4.0.1",
     "zustand": "^4.5.0"
   },
