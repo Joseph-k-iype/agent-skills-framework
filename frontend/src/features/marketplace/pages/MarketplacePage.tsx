@@ -1,5 +1,6 @@
-import { Skeleton } from "antd";
-import { useMemo, useState } from "react";
+import { SearchOutlined } from "@ant-design/icons";
+import { Input, Skeleton } from "antd";
+import { useEffect, useMemo, useState } from "react";
 import { tokens } from "@/app/theme/tokens";
 import { usePublicCategories, usePublicMarketplace, type SortKey } from "../api/publicMarketplaceApi";
 import { CategoryStrip } from "../components/CategoryStrip";
@@ -8,9 +9,16 @@ import { SkillCard } from "../components/SkillCard";
 export default function MarketplacePage() {
   const [category, setCategory] = useState<string | undefined>();
   const [sort, setSort] = useState<SortKey>("uses");
+  const [qInput, setQInput] = useState("");
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQ(qInput.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [qInput]);
 
   const categories = usePublicCategories();
-  const listings = usePublicMarketplace("", undefined, category, sort);
+  const listings = usePublicMarketplace(q, undefined, category, sort);
   const data = useMemo(() => listings.data ?? [], [listings.data]);
 
   return (
@@ -33,11 +41,22 @@ export default function MarketplacePage() {
         <div style={{ font: "400 12px " + tokens.font.sans, color: tokens.color.ink3 }}>
           Curated this week
         </div>
+        <Input
+          allowClear
+          prefix={<SearchOutlined style={{ color: tokens.color.ink3 }} />}
+          placeholder="Filter skills…"
+          value={qInput}
+          onChange={(e) => setQInput(e.target.value)}
+          style={{
+            marginLeft: "auto",
+            width: 220,
+            borderRadius: tokens.radius,
+          }}
+        />
         <button
           type="button"
           onClick={() => setSort(sort === "uses" ? "recent" : "uses")}
           style={{
-            marginLeft: "auto",
             cursor: "pointer",
             background: "none",
             border: "none",
@@ -82,7 +101,9 @@ export default function MarketplacePage() {
             font: "400 13px " + tokens.font.sans,
           }}
         >
-          No skills match — publish a concept version to list it here.
+          {q
+            ? `No skills match "${q}" — try a different filter.`
+            : "No skills match — publish a concept version to list it here."}
         </div>
       ) : (
         <div
