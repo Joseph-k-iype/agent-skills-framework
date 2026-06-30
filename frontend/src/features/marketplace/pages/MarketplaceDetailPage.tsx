@@ -6,7 +6,6 @@ import { tokens } from "@/app/theme/tokens";
 import { MarkdownPreview } from "@/features/concepts/components/MarkdownPreview";
 import { useAuthStore } from "@/stores/authStore";
 import { usePublicListing, type VersionRef } from "../api/publicMarketplaceApi";
-import { accentFor } from "../theme";
 
 function formatDate(iso?: string | null): string {
   if (!iso) return "";
@@ -39,7 +38,6 @@ export default function MarketplaceDetailPage() {
   const isWide = screens.lg ?? true;
   const listing = usePublicListing(id);
   const d = listing.data;
-  const accent = accentFor(d?.type);
 
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined);
 
@@ -314,7 +312,7 @@ export default function MarketplaceDetailPage() {
                       <span style={{ font: "600 12px " + tokens.font.sans, color: tokens.color.ink }}>
                         v{v.version}
                       </span>
-                      <span style={{ font: "500 11px " + tokens.font.mono, color: accent }}>
+                      <span style={{ font: "500 11px " + tokens.font.mono, color: tokens.color.ink3 }}>
                         {shortSha(v.sha)}
                       </span>
                       <span style={{ font: "400 11px " + tokens.font.sans, color: tokens.color.ink3 }}>
