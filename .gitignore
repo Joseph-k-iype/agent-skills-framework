@@ -29,3 +29,6 @@ dist/
 
 # Docker volumes (if mounted locally)
 data/
+
+# Superpowers brainstorm mockups
+.superpowers/
