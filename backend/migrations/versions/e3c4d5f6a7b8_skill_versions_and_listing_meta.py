@@ -60,6 +60,19 @@ def upgrade() -> None:
         "latest_sha = (SELECT content_sha FROM skill_versions sv WHERE sv.listing_id = ml.id LIMIT 1)"
     )
 
+    # De-duplicate listings to one row per (workspace, path) before the unique swap,
+    # keeping the most recently created. Versions of removed dups cascade-delete.
+    op.execute(
+        """
+        DELETE FROM marketplace_listings a
+        USING marketplace_listings b
+        WHERE a.source_workspace_id = b.source_workspace_id
+          AND a.source_path = b.source_path
+          AND (a.created_at < b.created_at
+               OR (a.created_at = b.created_at AND a.ctid < b.ctid))
+        """
+    )
+
     # Swap the unique constraint from (workspace, path, version) to (workspace, path).
     op.drop_constraint("uq_listing_concept_version", "marketplace_listings", type_="unique")
     op.create_unique_constraint(
