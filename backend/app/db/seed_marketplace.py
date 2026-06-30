@@ -50,7 +50,7 @@ def _md(frontmatter: dict, body: str) -> tuple[str, str]:
 _DEMO_SKILLS: list[dict] = [
     {
         "title": "CSV to Knowledge Graph",
-        "type": "Transformation",
+        "type": "skill",
         "category": "Transformation",
         "summary": (
             "Ingests arbitrary CSV exports, infers entity and relationship types from "
@@ -83,7 +83,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Entity Resolver",
-        "type": "Enrichment",
+        "type": "skill",
         "category": "Enrichment",
         "summary": (
             "Matches and merges duplicate customer or organization records across "
@@ -107,7 +107,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Schema Guardrail",
-        "type": "Validation",
+        "type": "agent",
         "category": "Validation",
         "summary": (
             "Validates incoming records against an evolving JSON Schema, flags breaking "
@@ -128,7 +128,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "PII Redactor",
-        "type": "Prompt",
+        "type": "prompt",
         "category": "Prompt",
         "summary": (
             "A prompt skill that scans free text for names, emails, phone numbers, and "
@@ -153,7 +153,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Address Normalizer",
-        "type": "Transformation",
+        "type": "skill",
         "category": "Transformation",
         "summary": (
             "Parses and standardizes postal addresses across formats and locales into a "
@@ -175,7 +175,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Anomaly Detector",
-        "type": "Validation",
+        "type": "skill",
         "category": "Validation",
         "summary": (
             "Flags statistical outliers in numeric and time-series columns using robust "
@@ -197,7 +197,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Geocoder",
-        "type": "Enrichment",
+        "type": "skill",
         "category": "Enrichment",
         "summary": (
             "Resolves a normalized address or place name to latitude/longitude and "
@@ -220,7 +220,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Currency Converter",
-        "type": "Transformation",
+        "type": "workflow",
         "category": "Transformation",
         "summary": (
             "Converts monetary amounts between currencies using daily reference rates, "
@@ -242,7 +242,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Data Cleanup Suite",
-        "type": "Toolkit",
+        "type": "toolkit",
         "category": "Toolkit",
         "summary": (
             "A bundled toolkit of small, composable cleanup steps — trim whitespace, "
@@ -267,7 +267,7 @@ _DEMO_SKILLS: list[dict] = [
     },
     {
         "title": "Date Parser",
-        "type": "Extraction",
+        "type": "skill",
         "category": "Extraction",
         "summary": (
             "Extracts and normalizes dates from free text and ambiguous formats into "
