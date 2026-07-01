@@ -7,7 +7,10 @@ import { MarkdownPreview } from "@/features/concepts/components/MarkdownPreview"
 import { RADIUS, storefrontType, swatchStyle } from "@/features/marketplace/storefront";
 import { categoryAccentFor } from "@/features/marketplace/theme";
 import { useAuthStore } from "@/stores/authStore";
-import { usePublicListing, type VersionRef } from "../api/publicMarketplaceApi";
+import { usePublicListing, useListingHistory, type VersionRef } from "../api/publicMarketplaceApi";
+import { StatStrip } from "../components/StatStrip";
+import { DownloadHistoryChart } from "../components/DownloadHistoryChart";
+import { CloneModal } from "../components/CloneModal";
 
 function formatDate(iso?: string | null): string {
   if (!iso) return "";
@@ -40,8 +43,10 @@ export default function MarketplaceDetailPage() {
   const isWide = screens.lg ?? true;
   const listing = usePublicListing(id);
   const d = listing.data;
+  const history = useListingHistory(id);
 
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined);
+  const [cloneOpen, setCloneOpen] = useState(false);
 
   const versions: VersionRef[] = useMemo(() => d?.versions ?? [], [d]);
 
@@ -183,6 +188,18 @@ export default function MarketplaceDetailPage() {
         </div>
       </div>
 
+      {/* Stat strip */}
+      <div style={{ marginBottom: 28 }}>
+        <StatStrip
+          uses={d.downloads}
+          clones={d.clones}
+          versionCount={versions.length}
+          latestVersion={d.latest_version ?? undefined}
+          createdAt={d.created_at}
+          updatedAt={selected?.created_at ?? d.created_at}
+        />
+      </div>
+
       <div
         style={{
           display: "grid",
@@ -190,7 +207,7 @@ export default function MarketplaceDetailPage() {
           gap: 28,
         }}
       >
-        {/* Main: rendered README */}
+        {/* Main: rendered README + usage chart */}
         <div style={{ minWidth: 0 }}>
           <div
             style={{
@@ -202,6 +219,13 @@ export default function MarketplaceDetailPage() {
           >
             <MarkdownPreview source={d.content} />
           </div>
+
+          <div style={{ height: 28 }} />
+
+          <Typography.Text strong style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
+            Cumulative uses
+          </Typography.Text>
+          <DownloadHistoryChart data={history.data ?? []} />
         </div>
 
         {/* Right: action panel */}
@@ -274,12 +298,16 @@ export default function MarketplaceDetailPage() {
                 {snippet || "No published version yet."}
               </pre>
             </div>
-            <Typography.Paragraph
-              type="secondary"
-              style={{ fontSize: 11.5, marginTop: 8, marginBottom: 0 }}
+            <div style={{ height: 12 }} />
+            <Button
+              block
+              onClick={() =>
+                user ? setCloneOpen(true) : navigate(`/login?next=/marketplace/${id}`)
+              }
+              style={{ height: 38, fontWeight: 600 }}
             >
-              Clone to workspace &amp; SDK snippets — coming in a later phase.
-            </Typography.Paragraph>
+              Clone to workspace
+            </Button>
 
             <div style={{ height: 24 }} />
 
@@ -329,6 +357,16 @@ export default function MarketplaceDetailPage() {
           </div>
         </div>
       </div>
+
+      {id && (
+        <CloneModal
+          open={cloneOpen}
+          listingId={id}
+          listingTitle={d.title}
+          versions={versions}
+          onClose={() => setCloneOpen(false)}
+        />
+      )}
     </div>
   );
 }
