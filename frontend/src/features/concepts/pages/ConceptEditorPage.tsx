@@ -66,8 +66,8 @@ export default function ConceptEditorPage() {
         runtime: concept.data.runtime,
         tags: concept.data.tags,
         capabilities: concept.data.capabilities,
-        sources: (concept.data as unknown as { sources?: string[] }).sources ?? [],
-        parent_path: (concept.data as unknown as { parent_path?: string | null }).parent_path ?? null,
+        sources: concept.data.sources ?? [],
+        parent_path: concept.data.parent_path ?? null,
       });
       setBody(concept.data.body);
     }

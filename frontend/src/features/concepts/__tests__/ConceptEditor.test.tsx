@@ -25,6 +25,8 @@ vi.mock("../api/conceptApi", () => {
     runtime: "python 3.12",
     tags: ["finance"],
     capabilities: [],
+    sources: ["internal"],
+    parent_path: null,
     body: "# Original",
     frontmatter: {},
     links: [],
@@ -87,5 +89,17 @@ describe("ConceptEditorPage", () => {
     await user.clear(body);
     await user.type(body, "# Hello Preview");
     expect(screen.getByRole("heading", { name: "Hello Preview" })).toBeInTheDocument();
+  });
+
+  it("save payload includes sources and parent_path", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    // Visit Metadata tab so its form fields mount and are registered with AntD Form.
+    await user.click(screen.getByRole("tab", { name: /Metadata/i }));
+    const saveBtn = screen.getByRole("button", { name: /Save/i });
+    await user.click(saveBtn);
+    expect(updateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ sources: ["internal"], parent_path: null }),
+    );
   });
 });

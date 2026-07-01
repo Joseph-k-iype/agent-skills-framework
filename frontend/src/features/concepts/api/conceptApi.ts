@@ -16,6 +16,8 @@ export interface Concept {
   runtime?: string | null;
   tags: string[];
   capabilities: string[];
+  sources: string[];
+  parent_path: string | null;
   body: string;
   frontmatter: Record<string, unknown>;
   links: string[];
@@ -116,6 +118,8 @@ export interface CreateConceptBody {
   runtime?: string | null;
   tags?: string[];
   capabilities?: string[];
+  sources?: string[];
+  parent_path?: string | null;
   body?: string;
   frontmatter?: Record<string, unknown>;
 }
@@ -136,6 +140,8 @@ export interface UpdateConceptBody {
   runtime?: string | null;
   tags?: string[];
   capabilities?: string[];
+  sources?: string[];
+  parent_path?: string | null;
   body?: string;
   frontmatter?: Record<string, unknown>;
 }
