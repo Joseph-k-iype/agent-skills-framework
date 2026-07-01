@@ -21,6 +21,7 @@ class NodeLabel(StrEnum):
     # It is the unified node for skills/agents/prompts/docs (type is free text).
     CONCEPT = "Concept"
     CAPABILITY = "Capability"
+    SOURCE = "Source"
     # A published snapshot of a Concept (one per git tag).
     VERSION = "Version"
     # Reserved for later phases
@@ -42,6 +43,7 @@ class RelType(StrEnum):
     BELONGS_TO = "BELONGS_TO"
     DEPENDS_ON = "DEPENDS_ON"
     USES = "USES"
+    DERIVED_FROM = "DERIVED_FROM"
     OWNS = "OWNS"
     PREVIOUS_VERSION = "PREVIOUS_VERSION"
     HAS_VERSION = "HAS_VERSION"
