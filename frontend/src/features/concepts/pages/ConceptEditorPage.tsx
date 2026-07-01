@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, LinkOutlined, SaveOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import {
   App as AntApp,
   AutoComplete,
@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   Modal,
+  Segmented,
   Select,
   Space,
   Spin,
@@ -13,7 +14,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { tokens } from "@/app/theme/tokens";
@@ -25,6 +26,15 @@ import { TestCasesPanel } from "../components/TestCasesPanel";
 import { VersionManager } from "../components/VersionManager";
 import { TaxonomyPicker } from "../components/TaxonomyPicker";
 import { ParentConceptSelect } from "../components/ParentConceptSelect";
+import type { SkillEditorHandle } from "../components/editor/SkillEditor";
+import { EditorToolbar } from "../components/editor/EditorToolbar";
+import type { Transform } from "../lib/markdownTransforms";
+import { NumberTicker } from "@/features/shared/fancy/NumberTicker";
+import { SaveFlash } from "@/features/shared/fancy/SaveFlash";
+
+const SkillEditor = lazy(() =>
+  import("../components/editor/SkillEditor").then((m) => ({ default: m.SkillEditor })),
+);
 
 export default function ConceptEditorPage() {
   const params = useParams();
@@ -41,6 +51,11 @@ export default function ConceptEditorPage() {
   const [body, setBody] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const cursorRef = useRef<number | null>(null);
+  const [mode, setMode] = useState<"edit" | "split" | "preview">("split");
+  const [saved, setSaved] = useState(false);
+  const editorRef = useRef<SkillEditorHandle>(null);
+
+  const applyTransform = (t: Transform) => editorRef.current?.applyTransform(t);
 
   // Runtime suggestions are the distinct runtimes already in use — not hardcoded.
   const runtimeOptions = useMemo(() => {
@@ -78,10 +93,14 @@ export default function ConceptEditorPage() {
   }
   const c = concept.data;
 
+  const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0;
+
   async function save() {
     const v = await form.validateFields();
     await update.mutateAsync({ ...v, body });
     message.success("Saved");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1600);
   }
 
   function insertLink(targetPath: string, title: string) {
@@ -95,44 +114,78 @@ export default function ConceptEditorPage() {
     message.success("Link inserted — it becomes a graph edge on save");
   }
 
+  const showEditor = mode !== "preview";
+  const showPreview = mode !== "edit";
   const editorTab = (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, minHeight: 420 }}>
-      <div>
-        <Space style={{ justifyContent: "space-between", width: "100%" }}>
-          <Typography.Text type="secondary">Markdown body</Typography.Text>
-          <Button size="small" icon={<LinkOutlined />} onClick={() => setLinkOpen(true)}>
-            Insert link
-          </Button>
-        </Space>
-        <Input.TextArea
-          aria-label="Concept body"
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            cursorRef.current = e.target.selectionStart;
-          }}
-          onSelect={(e) => {
-            cursorRef.current = (e.target as HTMLTextAreaElement).selectionStart;
-          }}
-          autoSize={{ minRows: 18, maxRows: 40 }}
-          style={{ fontFamily: tokens.font.mono, marginTop: 6 }}
-          placeholder={"# Title\n\nWrite the skill here. Draw diagrams:\n\n```mermaid\nflowchart LR\n  A --> B\n```"}
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <Segmented
+          size="small"
+          value={mode}
+          onChange={(v) => setMode(v as typeof mode)}
+          options={[
+            { label: "Edit", value: "edit" },
+            { label: "Split", value: "split" },
+            { label: "Preview", value: "preview" },
+          ]}
         />
+        <Space size={16}>
+          <SaveFlash show={saved} />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            <NumberTicker value={wordCount} /> words
+          </Typography.Text>
+        </Space>
       </div>
-      <div>
-        <Typography.Text type="secondary">Preview</Typography.Text>
-        <div
-          style={{
-            marginTop: 6,
-            border: `1px solid ${tokens.color.line}`,
-            borderRadius: tokens.radius,
-            padding: 16,
-            background: tokens.color.surface,
-            overflow: "auto",
-          }}
-        >
-          <MarkdownPreview source={body} />
-        </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: mode === "split" ? "1fr 1fr" : "1fr",
+          gap: 20,
+          minHeight: 460,
+        }}
+      >
+        {showEditor && (
+          <div
+            style={{
+              border: `1px solid ${tokens.color.line}`,
+              borderRadius: tokens.radius,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 460,
+            }}
+          >
+            <EditorToolbar onApply={applyTransform} onInsertConceptLink={() => setLinkOpen(true)} />
+            <div style={{ flex: 1, minHeight: 400 }}>
+              <Suspense fallback={<Spin style={{ margin: 40 }} />}>
+                <SkillEditor ref={editorRef} value={body} onChange={setBody} />
+              </Suspense>
+            </div>
+          </div>
+        )}
+        {showPreview && (
+          <div
+            style={{
+              border: `1px solid ${tokens.color.line}`,
+              borderRadius: tokens.radius,
+              padding: 16,
+              background: tokens.color.surface,
+              overflow: "auto",
+            }}
+          >
+            <MarkdownPreview source={body} />
+          </div>
+        )}
       </div>
     </div>
   );
