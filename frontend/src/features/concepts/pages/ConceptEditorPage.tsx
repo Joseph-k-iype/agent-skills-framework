@@ -23,6 +23,8 @@ import { EvaluatorPanel } from "../components/EvaluatorPanel";
 import { DeepEvalPanel } from "../components/DeepEvalPanel";
 import { TestCasesPanel } from "../components/TestCasesPanel";
 import { VersionManager } from "../components/VersionManager";
+import { TaxonomyPicker } from "../components/TaxonomyPicker";
+import { ParentConceptSelect } from "../components/ParentConceptSelect";
 
 export default function ConceptEditorPage() {
   const params = useParams();
@@ -64,6 +66,8 @@ export default function ConceptEditorPage() {
         runtime: concept.data.runtime,
         tags: concept.data.tags,
         capabilities: concept.data.capabilities,
+        sources: (concept.data as unknown as { sources?: string[] }).sources ?? [],
+        parent_path: (concept.data as unknown as { parent_path?: string | null }).parent_path ?? null,
       });
       setBody(concept.data.body);
     }
@@ -162,7 +166,13 @@ export default function ConceptEditorPage() {
         <Select mode="tags" placeholder="Add tags" tokenSeparators={[","]} />
       </Form.Item>
       <Form.Item label="Capabilities" name="capabilities">
-        <Select mode="tags" placeholder="e.g. extraction:invoice" tokenSeparators={[","]} />
+        <TaxonomyPicker kind="capability" />
+      </Form.Item>
+      <Form.Item label="Sources" name="sources">
+        <TaxonomyPicker kind="source" />
+      </Form.Item>
+      <Form.Item label="Parent concept" name="parent_path" tooltip="Optional — sets the concept's parent in the hierarchy">
+        <ParentConceptSelect />
       </Form.Item>
     </Space>
   );

@@ -42,13 +42,22 @@ export function usePublicMarketplace(
   type: string | undefined,
   category: string | undefined,
   sort: SortKey,
+  capability?: string | undefined,
+  source?: string | undefined,
 ) {
   return useQuery({
-    queryKey: ["public-marketplace", q, type ?? "", category ?? "", sort],
+    queryKey: ["public-marketplace", q, type ?? "", category ?? "", sort, capability ?? "", source ?? ""],
     queryFn: () =>
       unwrap<PublicListing[]>(
         http.get(`/public/marketplace`, {
-          params: { q: q || undefined, type: type || undefined, category: category || undefined, sort },
+          params: {
+            q: q || undefined,
+            type: type || undefined,
+            category: category || undefined,
+            sort,
+            capability: capability || undefined,
+            source: source || undefined,
+          },
         }),
       ),
   });

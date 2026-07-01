@@ -5,6 +5,7 @@ import { tokens } from "@/app/theme/tokens";
 import { GUTTER, RADIUS, storefrontType } from "@/features/marketplace/storefront";
 import { usePublicCategories, usePublicMarketplace, type SortKey } from "../api/publicMarketplaceApi";
 import { SkillCard } from "../components/SkillCard";
+import { useTaxonomyTerms } from "@/features/concepts/api/taxonomyApi";
 
 const MASONRY_CLASS = "marketplace-masonry";
 
@@ -26,6 +27,8 @@ function MasonryResponsiveStyle() {
 
 export default function MarketplacePage() {
   const [category, setCategory] = useState<string | undefined>();
+  const [capability, setCapability] = useState<string | undefined>();
+  const [source, setSource] = useState<string | undefined>();
   const [sort, setSort] = useState<SortKey>("uses");
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
@@ -37,7 +40,9 @@ export default function MarketplacePage() {
   }, [qInput]);
 
   const categories = usePublicCategories();
-  const listings = usePublicMarketplace(q, undefined, category, sort);
+  const capabilityTerms = useTaxonomyTerms("capabilities");
+  const sourceTerms = useTaxonomyTerms("sources");
+  const listings = usePublicMarketplace(q, undefined, category, sort, capability, source);
   const data = useMemo(() => listings.data ?? [], [listings.data]);
 
   // Stable total across the whole catalog — does not fluctuate while
@@ -116,6 +121,76 @@ export default function MarketplacePage() {
             />
           ))}
         </div>
+
+        {/* Capability facets */}
+        {(capabilityTerms.data?.terms ?? []).length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              gap: 14,
+              marginTop: 16,
+              paddingTop: 12,
+              borderTop: `1px solid ${tokens.color.line}`,
+            }}
+          >
+            <span
+              style={{
+                font: `500 11px/1 ${tokens.font.mono}`,
+                color: tokens.color.ink3,
+                alignSelf: "center",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              capability
+            </span>
+            <FacetFilter label="Any" isActive={!capability} onClick={() => setCapability(undefined)} />
+            {(capabilityTerms.data?.terms ?? []).map((t) => (
+              <FacetFilter
+                key={t.key}
+                label={t.label}
+                isActive={capability === t.key}
+                onClick={() => setCapability(capability === t.key ? undefined : t.key)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Source facets */}
+        {(sourceTerms.data?.terms ?? []).length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              gap: 14,
+              marginTop: 10,
+            }}
+          >
+            <span
+              style={{
+                font: `500 11px/1 ${tokens.font.mono}`,
+                color: tokens.color.ink3,
+                alignSelf: "center",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              source
+            </span>
+            <FacetFilter label="Any" isActive={!source} onClick={() => setSource(undefined)} />
+            {(sourceTerms.data?.terms ?? []).map((t) => (
+              <FacetFilter
+                key={t.key}
+                label={t.label}
+                isActive={source === t.key}
+                onClick={() => setSource(source === t.key ? undefined : t.key)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Section header: eyebrow + count, sort toggle */}
@@ -224,6 +299,55 @@ function CategoryFilter({
             left: 0,
             right: 0,
             bottom: -4,
+            height: 2,
+            background: tokens.color.accent,
+            borderRadius: 1,
+          }}
+        />
+      )}
+    </button>
+  );
+}
+
+/**
+ * Lightweight facet filter pill — matches the Swiss restraint of CategoryFilter.
+ * Active state: red underline tick only (no fill); label weight increases.
+ */
+function FacetFilter({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        cursor: "pointer",
+        background: "none",
+        border: `1px solid ${isActive ? tokens.color.accent : tokens.color.line}`,
+        borderRadius: 4,
+        padding: "2px 8px",
+        font: `${isActive ? 600 : 400} 11px ${tokens.font.sans}`,
+        color: isActive ? tokens.color.ink : tokens.color.ink2,
+        position: "relative",
+        transition: "border-color 0.15s",
+      }}
+    >
+      {label}
+      {isActive && (
+        <span
+          aria-hidden
+          style={{
+            display: "block",
+            position: "absolute",
+            left: 4,
+            right: 4,
+            bottom: -3,
             height: 2,
             background: tokens.color.accent,
             borderRadius: 1,

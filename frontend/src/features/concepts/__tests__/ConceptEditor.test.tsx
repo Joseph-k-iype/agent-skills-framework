@@ -10,6 +10,10 @@ vi.mock("mermaid", () => ({
 
 const { updateMutate } = vi.hoisted(() => ({ updateMutate: vi.fn().mockResolvedValue({}) }));
 
+vi.mock("../api/taxonomyApi", () => ({
+  useTaxonomyTerms: () => ({ isLoading: false, data: { terms: [] } }),
+}));
+
 vi.mock("../api/conceptApi", () => {
   // Stable references — mirrors react-query's identity stability between renders.
   const data = {
