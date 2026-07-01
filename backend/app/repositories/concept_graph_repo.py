@@ -220,4 +220,55 @@ class ConceptGraphRepository:
         node.pop("embedding", None)
         outgoing = [e for e in (rows[0][1] or []) if e.get("path")]
         incoming = [e for e in (rows[0][2] or []) if e.get("path")]
-        return {"node": node, "edges": outgoing + incoming}
+        parent_path = rows[0][3] if len(rows[0]) > 3 else None
+        children_paths = [p for p in (rows[0][4] or []) if p] if len(rows[0]) > 4 else []
+        return {
+            "node": node,
+            "edges": outgoing + incoming,
+            "parent": parent_path,
+            "children": children_paths,
+        }
+
+    # ── sub-concept hierarchy ──
+
+    def is_concept_descendant(self, *, workspace_id: str, child_path: str, target_path: str) -> bool:
+        """Return True if target_path == child_path OR is reachable from child_path via PARENT_OF."""
+        rows = _rows(
+            client.ro_query(
+                Q.IS_CONCEPT_DESCENDANT,
+                {
+                    "child_key": make_key(workspace_id, child_path),
+                    "target_key": make_key(workspace_id, target_path),
+                },
+            )
+        )
+        return bool(rows and rows[0][0])
+
+    def clear_parent(self, *, workspace_id: str, child_path: str) -> None:
+        """Drop any existing incoming PARENT_OF edge into the child node."""
+        client.query(Q.CLEAR_PARENT, {"child_key": make_key(workspace_id, child_path)})
+
+    def set_parent(self, *, workspace_id: str, child_path: str, parent_path: str) -> None:
+        """MERGE a PARENT_OF edge from parent -> child.
+
+        Raises CycleError if parent_path == child_path (self-parent) or if
+        parent_path is already a descendant of child_path (would create a cycle).
+        No edge is written on rejection.
+        """
+        from app.api.errors import CycleError
+
+        if self.is_concept_descendant(
+            workspace_id=workspace_id,
+            child_path=child_path,
+            target_path=parent_path,
+        ):
+            raise CycleError(
+                f"Cannot set '{parent_path}' as parent of '{child_path}': would create a cycle"
+            )
+        client.query(
+            Q.SET_PARENT,
+            {
+                "parent_key": make_key(workspace_id, parent_path),
+                "child_key": make_key(workspace_id, child_path),
+            },
+        )

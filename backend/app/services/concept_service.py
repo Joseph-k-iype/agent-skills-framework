@@ -269,6 +269,7 @@ class ConceptService:
         sources: list[str] | None = None,
         body: str,
         frontmatter: dict,
+        parent_path: str | None = None,
     ) -> ConceptOut:
         bundle = BundleRepo.init(workspace_id)
         path = _concept_path(folder_path, name)
@@ -286,6 +287,11 @@ class ConceptService:
         }
         bundle.write_file(path, to_markdown(fields, body), f"create {path}", self.user.id)
         await self.index.index_concept(workspace_id, path)
+        if parent_path is not None:
+            self.index.repo.clear_parent(workspace_id=workspace_id, child_path=path)
+            self.index.repo.set_parent(
+                workspace_id=workspace_id, child_path=path, parent_path=parent_path
+            )
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.CONCEPT_CREATED,
@@ -310,6 +316,8 @@ class ConceptService:
         sources: list[str] | None = None,
         body: str | None = None,
         frontmatter: dict | None = None,
+        parent_path: str | None = None,
+        clear_parent: bool = False,
     ) -> ConceptOut:
         bundle = self._bundle(workspace_id)
         if not bundle.exists or not bundle.exists_file(path):
@@ -337,6 +345,14 @@ class ConceptService:
 
         bundle.write_file(path, to_markdown(merged, new_body), f"update {path}", self.user.id)
         await self.index.index_concept(workspace_id, path)
+        if parent_path is not None:
+            # Raises CycleError before writing any edge if the link would create a cycle.
+            self.index.repo.clear_parent(workspace_id=workspace_id, child_path=path)
+            self.index.repo.set_parent(
+                workspace_id=workspace_id, child_path=path, parent_path=parent_path
+            )
+        elif clear_parent:
+            self.index.repo.clear_parent(workspace_id=workspace_id, child_path=path)
         await self.audit.record(
             actor_id=self.user.id,
             action=EventType.CONCEPT_UPDATED,

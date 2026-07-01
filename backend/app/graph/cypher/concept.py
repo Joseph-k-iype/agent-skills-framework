@@ -140,7 +140,33 @@ NEIGHBORHOOD = """
 MATCH (c:Concept {key:$key})
 OPTIONAL MATCH (c)-[:REFERENCES]->(out:Concept)
 OPTIONAL MATCH (inc:Concept)-[:REFERENCES]->(c)
+OPTIONAL MATCH (par:Concept)-[:PARENT_OF]->(c)
+OPTIONAL MATCH (c)-[:PARENT_OF]->(ch:Concept)
 RETURN c,
   collect(DISTINCT {dir:'out', path:out.path, title:out.title, type:out.type}) AS outgoing,
-  collect(DISTINCT {dir:'in', path:inc.path, title:inc.title, type:inc.type}) AS incoming
+  collect(DISTINCT {dir:'in', path:inc.path, title:inc.title, type:inc.type}) AS incoming,
+  par.path AS parent_path,
+  collect(DISTINCT ch.path) AS children_paths
+"""
+
+# ── sub-concept hierarchy (PARENT_OF) ──
+
+# Merge a PARENT_OF edge from parent -> child.
+SET_PARENT = """
+MATCH (parent:Concept {key:$parent_key}), (child:Concept {key:$child_key})
+MERGE (parent)-[:PARENT_OF]->(child)
+"""
+
+# Drop any incoming PARENT_OF edge into a child (clean reparenting).
+CLEAR_PARENT = """
+MATCH (old_parent:Concept)-[r:PARENT_OF]->(child:Concept {key:$child_key})
+DELETE r
+"""
+
+# Cycle guard: is target_key reachable from child_key via PARENT_OF?
+# Returns true if child_key == target_key (self-loop) OR target is a descendant of child.
+IS_CONCEPT_DESCENDANT = """
+MATCH (child:Concept {key:$child_key})
+OPTIONAL MATCH (child)-[:PARENT_OF*]->(d:Concept {key:$target_key})
+RETURN (child.key = $target_key) OR (d IS NOT NULL) AS blocked
 """

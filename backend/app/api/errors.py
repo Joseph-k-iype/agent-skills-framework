@@ -47,6 +47,13 @@ class ForbiddenError(AppError):
     status_code = status.HTTP_403_FORBIDDEN
 
 
+class CycleError(AppError):
+    """Raised when a PARENT_OF edge would create a cycle in the concept hierarchy."""
+
+    code = "HIERARCHY_CYCLE"
+    status_code = status.HTTP_400_BAD_REQUEST
+
+
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError):
