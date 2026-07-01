@@ -37,6 +37,7 @@ def _listing_dict(listing) -> dict:
         "capabilities": listing.capabilities or [],
         "sources": listing.sources or [],
         "downloads": listing.downloads,
+        "clones": listing.clones,
         "author_id": str(listing.author_id) if listing.author_id else None,
         "created_at": listing.created_at.isoformat() if listing.created_at else None,
         "category": listing.category,
