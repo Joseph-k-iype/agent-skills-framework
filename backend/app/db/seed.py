@@ -21,6 +21,7 @@ from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.core.security import hash_password
 from app.db.seed_marketplace import seed_marketplace_demo
+from app.db.seed_taxonomy import seed_taxonomy
 from app.db.session import SessionLocal
 from app.models import Permission, Role, User
 
@@ -85,6 +86,9 @@ async def seed() -> None:
     # Demo marketplace catalog — independently idempotent, own session/commit.
     async with SessionLocal() as db:
         await seed_marketplace_demo(db)
+
+    # Canonical capability/source taxonomy — graph-only, no DB session needed.
+    await seed_taxonomy()
 
 
 def main() -> None:
