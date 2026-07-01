@@ -124,3 +124,196 @@ async def test_sources_unauthenticated_returns_401(http):
         resp = await c.get("/api/v1/taxonomy/sources")
 
     assert resp.status_code == 401, resp.text
+
+
+# ---------------------------------------------------------------------------
+# Curation endpoint tests (Task 6)
+# ---------------------------------------------------------------------------
+
+
+async def test_list_proposed_admin(http, graph_name):
+    """Admin can GET /taxonomy/proposed and get a list (may be empty)."""
+    from app.db.seed_taxonomy import seed_taxonomy
+
+    await seed_taxonomy(graph_name)
+
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.get("/api/v1/taxonomy/proposed")
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "terms" in body
+    assert isinstance(body["terms"], list)
+
+
+async def test_list_proposed_consumer_forbidden(http, graph_name):
+    """Consumer token → 403 on GET /taxonomy/proposed."""
+    from app.db.seed_taxonomy import seed_taxonomy
+
+    await seed_taxonomy(graph_name)
+
+    _login(RoleName.CONSUMER)
+    async with http as c:
+        resp = await c.get("/api/v1/taxonomy/proposed")
+
+    assert resp.status_code == 403, resp.text
+
+
+async def test_create_term_admin(http, graph_name):
+    """Admin can POST /taxonomy/Capability to create a canonical term."""
+    from app.db.seed_taxonomy import seed_taxonomy
+
+    await seed_taxonomy(graph_name)
+
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/Capability",
+            json={"key": "test.curation.create", "label": "Test Curation Create"},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["key"] == "test.curation.create"
+    assert body["status"] == "canonical"
+
+
+async def test_create_term_consumer_forbidden(http, graph_name):
+    """Consumer token → 403 on POST /taxonomy/{label}."""
+    from app.db.seed_taxonomy import seed_taxonomy
+
+    await seed_taxonomy(graph_name)
+
+    _login(RoleName.CONSUMER)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/Capability",
+            json={"key": "test.curation.forbidden", "label": "Forbidden"},
+        )
+
+    assert resp.status_code == 403, resp.text
+
+
+async def test_create_term_unknown_label(http, graph_name):
+    """Unknown label → 400."""
+    from app.db.seed_taxonomy import seed_taxonomy
+
+    await seed_taxonomy(graph_name)
+
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/BadLabel",
+            json={"key": "x", "label": "x"},
+        )
+
+    assert resp.status_code == 400, resp.text
+
+
+async def test_promote_term(http, graph_name):
+    """Admin promotes a proposed term; follow-up read shows it as canonical."""
+    from app.repositories.taxonomy_repo import TaxonomyRepository
+
+    repo = TaxonomyRepository()
+
+    # Seed a proposed term directly via the repo
+    await repo.upsert_term(
+        "Capability", "test.promote.me", "Test Promote Me", None, "proposed", None
+    )
+
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post("/api/v1/taxonomy/Capability/test.promote.me/promote")
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["key"] == "test.promote.me"
+    assert body["status"] == "canonical"
+
+
+async def test_promote_unknown_label(http, graph_name):
+    """Promote with unknown label → 400."""
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post("/api/v1/taxonomy/BadLabel/somekey/promote")
+
+    assert resp.status_code == 400, resp.text
+
+
+async def test_merge_term(http, graph_name):
+    """Merge an alias term into a target; merge returns ok: true."""
+    from app.repositories.taxonomy_repo import TaxonomyRepository
+
+    repo = TaxonomyRepository()
+
+    # Create two canonical terms: source (alias) and target
+    await repo.upsert_term(
+        "Capability", "test.merge.alias", "Merge Alias", None, "canonical", None
+    )
+    await repo.upsert_term(
+        "Capability", "test.merge.target", "Merge Target", None, "canonical", None
+    )
+
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/Capability/test.merge.alias/merge",
+            json={"into_key": "test.merge.target"},
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"ok": True}
+
+
+async def test_merge_missing_target(http, graph_name):
+    """Merge into a non-existent target → 400."""
+    from app.repositories.taxonomy_repo import TaxonomyRepository
+
+    repo = TaxonomyRepository()
+
+    await repo.upsert_term(
+        "Capability", "test.merge.orphan", "Orphan", None, "canonical", None
+    )
+
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/Capability/test.merge.orphan/merge",
+            json={"into_key": "nonexistent.target"},
+        )
+
+    assert resp.status_code == 400, resp.text
+
+
+async def test_merge_unknown_label(http, graph_name):
+    """Merge with unknown label → 400."""
+    _login(RoleName.ADMIN)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/BadLabel/x/merge",
+            json={"into_key": "y"},
+        )
+
+    assert resp.status_code == 400, resp.text
+
+
+async def test_promote_consumer_forbidden(http, graph_name):
+    """Consumer token → 403 on promote."""
+    _login(RoleName.CONSUMER)
+    async with http as c:
+        resp = await c.post("/api/v1/taxonomy/Capability/somekey/promote")
+
+    assert resp.status_code == 403, resp.text
+
+
+async def test_merge_consumer_forbidden(http, graph_name):
+    """Consumer token → 403 on merge."""
+    _login(RoleName.CONSUMER)
+    async with http as c:
+        resp = await c.post(
+            "/api/v1/taxonomy/Capability/x/merge",
+            json={"into_key": "y"},
+        )
+
+    assert resp.status_code == 403, resp.text

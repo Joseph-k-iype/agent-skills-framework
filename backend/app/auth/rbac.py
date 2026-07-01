@@ -42,6 +42,8 @@ PERMISSIONS: dict[str, str] = {
     "admin:roles": "Manage roles & permissions",
     "admin:audit": "Read audit logs",
     "marketplace:moderate": "Moderate the marketplace",
+    # taxonomy
+    "taxonomy:manage": "Curate taxonomy (propose/promote/merge terms)",
 }
 
 _CONSUMER = {"workspace:read", "skill:read", "skill:clone", "search:read"}
