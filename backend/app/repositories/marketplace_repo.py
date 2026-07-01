@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy import Text, cast, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -203,3 +204,76 @@ class MarketplaceRepository:
             .where(MarketplaceListing.id == listing_id)
             .values(latest_version=version, latest_sha=content_sha)
         )
+
+    async def get_usage_for_key(self, api_key_id: uuid.UUID) -> dict[str, Any]:
+        """Aggregate usage_events rows for a given api_key_id.
+
+        Returns::
+
+            {
+                "total": int,
+                "last_used_at": str | None,   # ISO-8601
+                "by_kind": {kind: count, ...},
+                "by_skill": [{"listing_id": str, "title": str, "count": int}, ...],
+                "recent": [{"kind": str, "listing_id": str, "created_at": str}, ...],
+            }
+        """
+        # ---- total + last_used_at ----
+        agg = await self.db.execute(
+            select(
+                func.count(UsageEvent.id).label("total"),
+                func.max(UsageEvent.created_at).label("last_used_at"),
+            ).where(UsageEvent.api_key_id == api_key_id)
+        )
+        row = agg.one()
+        total: int = row.total or 0
+        last_used_at = row.last_used_at.isoformat() if row.last_used_at else None
+
+        # ---- by_kind ----
+        kind_rows = await self.db.execute(
+            select(UsageEvent.kind, func.count(UsageEvent.id).label("cnt"))
+            .where(UsageEvent.api_key_id == api_key_id)
+            .group_by(UsageEvent.kind)
+        )
+        by_kind: dict[str, int] = {r.kind: r.cnt for r in kind_rows}
+
+        # ---- by_skill (join to listing for title) ----
+        skill_rows = await self.db.execute(
+            select(
+                UsageEvent.listing_id,
+                MarketplaceListing.title,
+                func.count(UsageEvent.id).label("cnt"),
+            )
+            .join(MarketplaceListing, MarketplaceListing.id == UsageEvent.listing_id)
+            .where(UsageEvent.api_key_id == api_key_id)
+            .group_by(UsageEvent.listing_id, MarketplaceListing.title)
+            .order_by(desc(func.count(UsageEvent.id)))
+        )
+        by_skill = [
+            {"listing_id": str(r.listing_id), "title": r.title, "count": r.cnt}
+            for r in skill_rows
+        ]
+
+        # ---- recent (up to 20 most-recent events) ----
+        recent_rows = await self.db.execute(
+            select(UsageEvent.kind, UsageEvent.listing_id, UsageEvent.created_at)
+            .where(UsageEvent.api_key_id == api_key_id)
+            .order_by(desc(UsageEvent.created_at))
+            .limit(20)
+        )
+        recent = [
+            {
+                "kind": r.kind,
+                "listing_id": str(r.listing_id),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in recent_rows
+        ]
+
+        return {
+            "total": total,
+            "last_used_at": last_used_at,
+            "by_kind": by_kind,
+            "by_skill": by_skill,
+            "recent": recent,
+        }

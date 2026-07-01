@@ -37,3 +37,16 @@ class ApiKeyRepository:
 
     async def get(self, key_id: uuid.UUID) -> ApiKey | None:
         return await self.db.get(ApiKey, key_id)
+
+    async def get_for_user(self, key_id: uuid.UUID, user_id: uuid.UUID) -> ApiKey | None:
+        """Return the key only if it belongs to ``user_id``; else ``None``.
+
+        Deliberately does NOT filter on ``revoked_at`` so that revoked keys
+        still expose their historical usage data.
+        """
+        return await self.db.scalar(
+            select(ApiKey).where(
+                ApiKey.id == key_id,
+                ApiKey.user_id == user_id,
+            )
+        )
