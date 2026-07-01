@@ -23,7 +23,9 @@ async def fetch_skill(
     user: CurrentUser = Depends(require_api_key),
     db: AsyncSession = Depends(get_db),
 ):
-    out = await MarketplaceService(db, user).fetch_skill(listing_id=listing_id, user_id=user.id)
+    out = await MarketplaceService(db, user).fetch_skill(
+        listing_id=listing_id, user_id=user.id, api_key_id=user.api_key_id
+    )
     return success(out)
 
 
@@ -34,6 +36,10 @@ async def report_usage(
     db: AsyncSession = Depends(get_db),
 ):
     out = await MarketplaceService(db, user).report_usage(
-        listing_id=body.listing_id, user_id=user.id, kind=body.kind, meta=body.meta
+        listing_id=body.listing_id,
+        user_id=user.id,
+        kind=body.kind,
+        meta=body.meta,
+        api_key_id=user.api_key_id,
     )
     return success(out)

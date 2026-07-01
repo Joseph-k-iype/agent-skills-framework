@@ -24,5 +24,12 @@ class UsageEvent(Base, TimestampMixin):
         PG_UUID(as_uuid=True), ForeignKey("marketplace_listings.id"), index=True
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), default=None)
+    api_key_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("api_keys.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        default=None,
+    )
     kind: Mapped[str] = mapped_column(index=True)
     meta: Mapped[dict] = mapped_column(JSONB, default=dict)

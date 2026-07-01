@@ -135,7 +135,13 @@ class MarketplaceService:
                 listing.source_path
             ) else ""
 
-    async def fetch_skill(self, *, listing_id: str, user_id: str | None) -> dict:
+    async def fetch_skill(
+        self,
+        *,
+        listing_id: str,
+        user_id: str | None,
+        api_key_id: uuid.UUID | None = None,
+    ) -> dict:
         """SDK consumption: return a published skill's content + a usable system prompt."""
         listing = await self.repo.get(uuid.UUID(listing_id))
         if not listing:
@@ -151,6 +157,7 @@ class MarketplaceService:
             user_id=uuid.UUID(user_id) if user_id else None,
             kind="fetch",
             meta={},
+            api_key_id=api_key_id,
         )
         return {
             "id": str(listing.id),
@@ -227,7 +234,13 @@ class MarketplaceService:
         }
 
     async def report_usage(
-        self, *, listing_id: str, user_id: str | None, kind: str = "apply", meta: dict | None = None
+        self,
+        *,
+        listing_id: str,
+        user_id: str | None,
+        kind: str = "apply",
+        meta: dict | None = None,
+        api_key_id: uuid.UUID | None = None,
     ) -> dict:
         listing = await self.repo.get(uuid.UUID(listing_id))
         if not listing:
@@ -237,6 +250,7 @@ class MarketplaceService:
             user_id=uuid.UUID(user_id) if user_id else None,
             kind=kind,
             meta=meta or {},
+            api_key_id=api_key_id,
         )
         if kind == "apply":
             await self.repo.increment_downloads(listing.id)  # "uses" counter

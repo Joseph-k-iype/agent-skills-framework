@@ -119,10 +119,22 @@ class MarketplaceRepository:
         )
 
     async def add_usage(
-        self, *, listing_id: uuid.UUID, user_id: uuid.UUID | None, kind: str, meta: dict
+        self,
+        *,
+        listing_id: uuid.UUID,
+        user_id: uuid.UUID | None,
+        kind: str,
+        meta: dict,
+        api_key_id: uuid.UUID | None = None,
     ) -> None:
         self.db.add(
-            UsageEvent(listing_id=listing_id, user_id=user_id, kind=kind, meta=meta or {})
+            UsageEvent(
+                listing_id=listing_id,
+                user_id=user_id,
+                kind=kind,
+                meta=meta or {},
+                api_key_id=api_key_id,
+            )
         )
         await self.db.flush()
 

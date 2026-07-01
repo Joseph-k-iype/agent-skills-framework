@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -31,6 +32,7 @@ class CurrentUser:
     id: str
     role: str
     permissions: list[str]
+    api_key_id: uuid.UUID | None = field(default=None)
 
     def has(self, code: str) -> bool:
         return code in self.permissions
@@ -76,14 +78,19 @@ async def require_api_key(
 
     if creds is None or not creds.credentials.startswith("sk_"):
         raise UnauthorizedError("Missing or malformed API key")
-    user_id = await ApiKeyService(db).authenticate(creds.credentials)
+    user_id, api_key_id = await ApiKeyService(db).authenticate(creds.credentials)
     if user_id is None:
         raise UnauthorizedError("Invalid or revoked API key")
     user = await UserRepository(db).get_by_id(user_id)
     if user is None:
         raise UnauthorizedError("API key owner not found")
     role = user.role.name if user.role else ""
-    return CurrentUser(id=str(user.id), role=role, permissions=permissions_for(role))
+    return CurrentUser(
+        id=str(user.id),
+        role=role,
+        permissions=permissions_for(role),
+        api_key_id=api_key_id,
+    )
 
 
 def client_meta(request: Request) -> dict[str, str | None]:

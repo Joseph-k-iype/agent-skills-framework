@@ -28,10 +28,11 @@ async def test_create_returns_key_once_then_authenticates(admin_id):
         assert created["key"].startswith("sk_live_")
         assert created["prefix"] == created["key"][:14]
 
-        # The plaintext authenticates to the owning user.
-        owner = await svc.authenticate(created["key"])
+        # The plaintext authenticates to the owning user + its key id.
+        owner, api_key_id = await svc.authenticate(created["key"])
         await db.commit()
         assert str(owner) == admin_id
+        assert str(api_key_id) == created["id"]
 
         # Listing never exposes the secret, only the prefix.
         listed = await svc.list(user_id=admin_id)
@@ -46,9 +47,9 @@ async def test_revoked_key_no_longer_authenticates(admin_id):
         await db.commit()
         await svc.revoke(user_id=admin_id, key_id=created["id"])
         await db.commit()
-        assert await svc.authenticate(created["key"]) is None
+        assert await svc.authenticate(created["key"]) == (None, None)
 
 
 async def test_bad_key_authenticates_to_none(admin_id):
     async with SessionLocal() as db:
-        assert await ApiKeyService(db).authenticate("sk_live_not_a_real_key") is None
+        assert await ApiKeyService(db).authenticate("sk_live_not_a_real_key") == (None, None)

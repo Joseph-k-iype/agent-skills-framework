@@ -62,11 +62,15 @@ class ApiKeyService:
             row.revoked_at = datetime.now(UTC)
             await self.db.flush()
 
-    async def authenticate(self, presented_key: str) -> uuid.UUID | None:
-        """Return the owning user id for a valid key, else None. Bumps last_used."""
+    async def authenticate(
+        self, presented_key: str
+    ) -> tuple[uuid.UUID, uuid.UUID] | tuple[None, None]:
+        """Return ``(user_id, api_key_id)`` for a valid key, else ``(None, None)``.
+        Bumps last_used on success.
+        """
         row = await self.repo.by_hash(_hash(presented_key))
         if not row:
-            return None
+            return (None, None)
         row.last_used_at = datetime.now(UTC)
         await self.db.flush()
-        return row.user_id
+        return (row.user_id, row.id)
