@@ -30,4 +30,37 @@ describe("MarkdownPreview", () => {
     render(<MarkdownPreview source={md} />);
     expect(screen.queryByTestId("mermaid")).toBeNull();
   });
+
+  it("renders allowed inline HTML (details/summary)", () => {
+    render(<MarkdownPreview source={"<details><summary>More</summary>body</details>"} />);
+    expect(screen.getByText("More")).toBeInTheDocument();
+  });
+
+  it("strips <script> tags from embedded HTML", () => {
+    const { container } = render(
+      <MarkdownPreview source={"<p>hi</p><script>window.__pwned=1</script>"} />,
+    );
+    expect(container.querySelector("script")).toBeNull();
+    expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined();
+  });
+
+  it("drops javascript: links", () => {
+    const { container } = render(<MarkdownPreview source={"[x](javascript:alert(1))"} />);
+    const a = container.querySelector("a");
+    expect(a?.getAttribute("href") ?? "").not.toContain("javascript:");
+  });
+
+  it("removes iframes whose src host is not allow-listed", () => {
+    const { container } = render(
+      <MarkdownPreview source={'<iframe src="https://evil.example/x"></iframe>'} />,
+    );
+    expect(container.querySelector("iframe")).toBeNull();
+  });
+
+  it("keeps iframes from an allow-listed host", () => {
+    const { container } = render(
+      <MarkdownPreview source={'<iframe src="https://www.youtube.com/embed/abc"></iframe>'} />,
+    );
+    expect(container.querySelector("iframe")).not.toBeNull();
+  });
 });

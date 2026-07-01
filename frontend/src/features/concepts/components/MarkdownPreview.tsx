@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import mermaid from "mermaid";
+import { PREVIEW_SANITIZE_SCHEMA, rehypeIframeAllowlist } from "../lib/sanitizeSchema";
 
 let initialized = false;
 function ensureInit() {
@@ -54,6 +57,7 @@ export function MarkdownPreview({ source }: { source: string }) {
     <div className="markdown-preview">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, PREVIEW_SANITIZE_SCHEMA], rehypeIframeAllowlist]}
         components={{
           code(props) {
             const { className, children } = props as {
