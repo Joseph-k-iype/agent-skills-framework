@@ -16,6 +16,7 @@ const MarketplaceDetailPage = lazy(
 const InsightsPage = lazy(() => import("@/features/insights/pages/InsightsPage"));
 const ApiKeysPage = lazy(() => import("@/features/settings/pages/ApiKeysPage"));
 const SdkDocsPage = lazy(() => import("@/features/sdk/pages/SdkDocsPage"));
+const PlaygroundPage = lazy(() => import("@/features/sdk/pages/PlaygroundPage"));
 
 const S = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: "insights", element: S(<InsightsPage />) },
       { path: "settings/api-keys", element: S(<ApiKeysPage />) },
       { path: "sdk", element: S(<SdkDocsPage />) },
+      { path: "sdk/playground", element: S(<PlaygroundPage />) },
       {
         path: "admin/users",
         element: (

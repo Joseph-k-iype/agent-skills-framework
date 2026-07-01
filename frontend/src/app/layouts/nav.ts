@@ -29,6 +29,7 @@ const DEVELOPER_NAV: NavItem[] = [
   { key: "/marketplace", label: "Marketplace", icon: ShopOutlined },
   { key: "/settings/api-keys", label: "API Keys", icon: KeyOutlined },
   { key: "/sdk", label: "SDK Docs", icon: CodeOutlined },
+  { key: "/sdk/playground", label: "SDK Playground", icon: CodeOutlined },
 ];
 
 const ADMIN_NAV: NavItem[] = [
