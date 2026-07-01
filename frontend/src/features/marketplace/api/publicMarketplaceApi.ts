@@ -28,6 +28,12 @@ export interface VersionRef {
 export interface PublicListingDetail extends PublicListing {
   content: string;
   versions: VersionRef[];
+  clones: number;
+}
+
+export interface HistoryPoint {
+  date: string;
+  cumulative: number;
 }
 
 export interface Category {
@@ -74,6 +80,17 @@ export function usePublicListing(id: string | undefined) {
   return useQuery({
     queryKey: ["public-listing", id],
     queryFn: () => unwrap<PublicListingDetail>(http.get(`/public/marketplace/${id}`)),
+    enabled: !!id,
+  });
+}
+
+export function useListingHistory(id: string | undefined, days = 90) {
+  return useQuery({
+    queryKey: ["public-listing-history", id, days],
+    queryFn: () =>
+      unwrap<HistoryPoint[]>(
+        http.get(`/public/marketplace/${id}/history`, { params: { days } }),
+      ),
     enabled: !!id,
   });
 }
