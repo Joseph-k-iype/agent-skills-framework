@@ -150,3 +150,21 @@ async def test_merge_missing_into_key_returns_false(graph_name):
     term = await repo.get_term("Capability", "a.alias")
     assert term is not None
     assert term["key"] == "a.alias"
+
+
+async def test_merge_no_edges_no_children(graph_name):
+    """merge_term deletes the alias even when it has no concept edges and no children.
+
+    This exercises the REPOINT_AND_DELETE_ALIAS path where every OPTIONAL MATCH
+    returns nothing — the final DETACH DELETE must still execute.
+    """
+    repo = TaxonomyRepository()
+    await repo.upsert_term("Capability", "lonely.alias", "Lonely Alias", None, "canonical", None)
+    await repo.upsert_term("Capability", "lonely.keep", "Lonely Keep", None, "canonical", None)
+
+    result = await repo.merge_term("Capability", "lonely.alias", "lonely.keep")
+    assert result is True
+
+    # alias node must be gone even though it had no edges or children
+    gone = await repo.get_term("Capability", "lonely.alias")
+    assert gone is None, "alias node was not deleted (orphaned-node bug in DETACH DELETE path)"

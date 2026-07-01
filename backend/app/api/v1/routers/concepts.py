@@ -8,12 +8,10 @@ permission codes — a skill is just a concept with ``type: skill``.
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_db, require_permission
-from app.api.errors import CycleError
-from app.core.envelope import error, success
+from app.core.envelope import success
 from app.schemas.concept import (
     ConceptCreate,
     ConceptMove,
@@ -50,26 +48,20 @@ async def create_concept(
     user: CurrentUser = Depends(require_permission("skill:create")),
     db: AsyncSession = Depends(get_db),
 ):
-    try:
-        out = await ConceptService(db, user).create(
-            workspace_id=workspace_id,
-            folder_path=body.folder_path,
-            name=body.name,
-            type=body.type,
-            description=body.description,
-            runtime=body.runtime,
-            tags=body.tags,
-            capabilities=body.capabilities,
-            sources=body.sources,
-            body=body.body,
-            frontmatter=body.frontmatter,
-            parent_path=body.parent_path,
-        )
-    except CycleError as exc:
-        return JSONResponse(
-            status_code=400,
-            content=error(exc.code, exc.message),
-        )
+    out = await ConceptService(db, user).create(
+        workspace_id=workspace_id,
+        folder_path=body.folder_path,
+        name=body.name,
+        type=body.type,
+        description=body.description,
+        runtime=body.runtime,
+        tags=body.tags,
+        capabilities=body.capabilities,
+        sources=body.sources,
+        body=body.body,
+        frontmatter=body.frontmatter,
+        parent_path=body.parent_path,
+    )
     background.add_task(_heal_embeddings, workspace_id)
     return success(out.model_dump())
 
@@ -93,26 +85,20 @@ async def update_concept(
     user: CurrentUser = Depends(require_permission("skill:update")),
     db: AsyncSession = Depends(get_db),
 ):
-    try:
-        out = await ConceptService(db, user).update(
-            workspace_id=workspace_id,
-            path=path,
-            title=body.title,
-            type=body.type,
-            description=body.description,
-            runtime=body.runtime,
-            tags=body.tags,
-            capabilities=body.capabilities,
-            sources=body.sources,
-            body=body.body,
-            frontmatter=body.frontmatter,
-            parent_path=body.parent_path,
-        )
-    except CycleError as exc:
-        return JSONResponse(
-            status_code=400,
-            content=error(exc.code, exc.message),
-        )
+    out = await ConceptService(db, user).update(
+        workspace_id=workspace_id,
+        path=path,
+        title=body.title,
+        type=body.type,
+        description=body.description,
+        runtime=body.runtime,
+        tags=body.tags,
+        capabilities=body.capabilities,
+        sources=body.sources,
+        body=body.body,
+        frontmatter=body.frontmatter,
+        parent_path=body.parent_path,
+    )
     background.add_task(_heal_embeddings, workspace_id)
     return success(out.model_dump())
 

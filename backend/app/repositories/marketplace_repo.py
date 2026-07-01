@@ -92,12 +92,14 @@ class MarketplaceRepository:
                 )
             )
         if capability:
-            # JSONB array contains the value — mirror the tag cast pattern.
+            # Substring match on the JSONB-cast text: hierarchy-inclusive by design
+            # (e.g. "extraction" also matches "extraction.table"), NOT exact-match.
             like = f"%{capability.lower()}%"
             stmt = stmt.where(
                 func.lower(cast(MarketplaceListing.capabilities, Text)).like(like)
             )
         if source:
+            # Same substring / hierarchy-inclusive match as for capability above.
             like = f"%{source.lower()}%"
             stmt = stmt.where(
                 func.lower(cast(MarketplaceListing.sources, Text)).like(like)
