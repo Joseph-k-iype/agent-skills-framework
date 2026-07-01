@@ -9,7 +9,7 @@ comes from git — there is no bespoke version model.
 from __future__ import annotations
 
 from app.api.deps import CurrentUser
-from app.api.errors import ConflictError, NotFoundError
+from app.api.errors import ConflictError, CycleError, NotFoundError
 from app.events.types import EventType
 from app.okf.concept import Concept, parse_concept, to_markdown
 from app.schemas.concept import (
@@ -275,6 +275,8 @@ class ConceptService:
         path = _concept_path(folder_path, name)
         if bundle.exists_file(path):
             raise ConflictError("A concept with that name already exists in this folder")
+        if parent_path is not None and parent_path == path:
+            raise CycleError("A concept cannot be its own parent")
         fields = {
             "type": type,
             "title": name,

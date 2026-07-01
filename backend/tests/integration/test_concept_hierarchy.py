@@ -95,6 +95,40 @@ async def test_self_parent_rejected(setup, admin_id):
             await svc.update(workspace_id=ws, path=a.path, parent_path=a.path)
 
 
+async def test_create_self_parent_rejected_leaves_no_node(setup, admin_id):
+    """Creating with parent_path == own path raises CycleError before writing any file/node."""
+    from app.api.errors import ConflictError
+
+    ws = "ws_hier_" + uuid.uuid4().hex[:8]
+    async with SessionLocal() as db:
+        svc = ConceptService(db, _user(admin_id))
+
+        # Compute the path that would be assigned (mirrors _concept_path logic)
+        from app.storage import paths as storage_paths
+
+        name = "Self Loop"
+        would_be_path = f"{storage_paths.slugify(name)}.md"
+
+        with pytest.raises(CycleError):
+            await svc.create(
+                workspace_id=ws,
+                folder_path="",
+                name=name,
+                type="skill",
+                description=None,
+                runtime=None,
+                tags=[],
+                capabilities=[],
+                body="x",
+                frontmatter={},
+                parent_path=would_be_path,
+            )
+
+        # Node/file must NOT have been written — re-creating without parent succeeds
+        created = await _create(svc, ws, name)
+        assert created.path == would_be_path
+
+
 async def test_descendant_as_parent_rejected(setup, admin_id):
     ws = "ws_hier_" + uuid.uuid4().hex[:8]
     async with SessionLocal() as db:
