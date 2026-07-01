@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 from typing import Any
 
 from sqlalchemy import Text, cast, desc, func, or_, select, update
@@ -141,9 +142,9 @@ class MarketplaceRepository:
         with no events are omitted (the frontend area chart interpolates). Empty
         history (no apply events at all) returns ``[]``.
         """
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         window_start = now - timedelta(days=days)
 
         # Pre-window offset: apply events strictly before the window.

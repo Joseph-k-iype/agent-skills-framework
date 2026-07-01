@@ -9,6 +9,7 @@ and the published content + tracks usage.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 from app.api.deps import CurrentUser
 from app.api.errors import NotFoundError
@@ -255,7 +256,7 @@ class MarketplaceService:
         Stamps provenance frontmatter, records the clone (counter + usage event),
         and returns ``{workspace_id, path}`` of the created concept.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from app.services.concept_service import ConceptService
 
@@ -284,7 +285,7 @@ class MarketplaceService:
             "source_listing_id": str(listing.id),
             "source_sha": source_sha,
             "cloned_from": listing.title,
-            "cloned_at": datetime.now(timezone.utc).isoformat(),
+            "cloned_at": datetime.now(UTC).isoformat(),
         }
 
         cs = ConceptService(self.db, self.user)
