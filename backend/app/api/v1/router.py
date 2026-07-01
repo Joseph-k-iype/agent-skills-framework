@@ -15,6 +15,7 @@ from app.api.v1.routers import (
     marketplace,
     public,
     sdk,
+    taxonomy,
     workflows,
     workspaces,
 )
@@ -34,3 +35,4 @@ api_router.include_router(public.router, prefix="/public", tags=["public"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(api_keys.router, prefix="/api-keys", tags=["api-keys"])
 api_router.include_router(sdk.router, prefix="/sdk", tags=["sdk"])
+api_router.include_router(taxonomy.router, prefix="/taxonomy", tags=["taxonomy"])
