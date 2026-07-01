@@ -6,6 +6,15 @@ export default defineConfig({
   resolve: {
     alias: { "@": "/src" },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ["monaco-editor", "@monaco-editor/react"],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
