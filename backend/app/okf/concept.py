@@ -26,6 +26,7 @@ class Concept:
     runtime: str | None = None
     tags: list[str] = field(default_factory=list)
     capabilities: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
     frontmatter: dict = field(default_factory=dict)
     body: str = ""
     links: list[str] = field(default_factory=list)
@@ -92,6 +93,7 @@ def parse_concept(rel_path: str, content: str) -> Concept:
         runtime=str(runtime) if runtime is not None else None,
         tags=_as_list(meta.get("tags")),
         capabilities=_as_list(meta.get("capabilities")),
+        sources=_as_list(meta.get("sources")),
         frontmatter=meta,
         body=body,
         links=links,

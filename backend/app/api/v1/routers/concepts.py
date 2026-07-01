@@ -57,6 +57,7 @@ async def create_concept(
         runtime=body.runtime,
         tags=body.tags,
         capabilities=body.capabilities,
+        sources=body.sources,
         body=body.body,
         frontmatter=body.frontmatter,
     )
@@ -92,6 +93,7 @@ async def update_concept(
         runtime=body.runtime,
         tags=body.tags,
         capabilities=body.capabilities,
+        sources=body.sources,
         body=body.body,
         frontmatter=body.frontmatter,
     )

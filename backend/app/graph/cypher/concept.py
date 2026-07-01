@@ -12,7 +12,7 @@ MERGE (c:Concept {key:$key})
 SET c.workspace_id = $workspace_id, c.path = $path,
     c.name = $title, c.title = $title, c.type = $type,
     c.description = $description, c.runtime = $runtime,
-    c.tags = $tags, c.capabilities = $capabilities,
+    c.tags = $tags, c.capabilities = $capabilities, c.sources = $sources,
     c.body = $body, c.content_hash = $content_hash, c.status = 'active',
     c.embedding_status = coalesce(c.embedding_status, 'pending'),
     c.created_at = coalesce(c.created_at, $ts), c.updated_at = $ts
@@ -44,6 +44,23 @@ MERGE (a)-[:REFERENCES]->(b)
 # Drop a node's outgoing references so a re-index can recreate them cleanly
 # (otherwise stale edges accumulate across edits).
 CLEAR_REFERENCES_FROM = "MATCH (a:Concept {key:$key})-[r:REFERENCES]->() DELETE r"
+
+# Drop USES (→Capability) and DERIVED_FROM (→Source) edges from a concept so
+# they can be rebuilt cleanly after each index/re-index.
+CLEAR_USES_FROM = "MATCH (a:Concept {key:$key})-[r:USES]->() DELETE r"
+CLEAR_DERIVED_FROM_FROM = "MATCH (a:Concept {key:$key})-[r:DERIVED_FROM]->() DELETE r"
+
+# Create USES edge from a Concept to a Capability node.
+CREATE_USES = """
+MATCH (c:Concept {key:$concept_key}), (t:Capability {key:$term_key})
+MERGE (c)-[:USES]->(t)
+"""
+
+# Create DERIVED_FROM edge from a Concept to a Source node.
+CREATE_DERIVED_FROM = """
+MATCH (c:Concept {key:$concept_key}), (t:Source {key:$term_key})
+MERGE (c)-[:DERIVED_FROM]->(t)
+"""
 
 DELETE_CONCEPT = "MATCH (c:Concept {key:$key}) DETACH DELETE c"
 

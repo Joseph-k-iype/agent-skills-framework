@@ -32,6 +32,7 @@ class ConceptGraphRepository:
         runtime: str | None,
         tags: list[str],
         capabilities: list[str],
+        sources: list[str],
         body: str,
         content_hash: str,
         ts: str,
@@ -48,6 +49,7 @@ class ConceptGraphRepository:
                 "runtime": runtime,
                 "tags": tags,
                 "capabilities": capabilities,
+                "sources": sources,
                 "body": body,
                 "content_hash": content_hash,
                 "ts": ts,
@@ -79,6 +81,28 @@ class ConceptGraphRepository:
                 "from_key": make_key(workspace_id, from_path),
                 "to_key": make_key(workspace_id, to_path),
             },
+        )
+
+    def clear_uses_from(self, *, workspace_id: str, path: str) -> None:
+        """Drop all outgoing USES (→Capability) edges from a concept node."""
+        client.query(Q.CLEAR_USES_FROM, {"key": make_key(workspace_id, path)})
+
+    def clear_derived_from_from(self, *, workspace_id: str, path: str) -> None:
+        """Drop all outgoing DERIVED_FROM (→Source) edges from a concept node."""
+        client.query(Q.CLEAR_DERIVED_FROM_FROM, {"key": make_key(workspace_id, path)})
+
+    def create_uses(self, *, workspace_id: str, path: str, term_key: str) -> None:
+        """Create a USES edge from a concept to a Capability term."""
+        client.query(
+            Q.CREATE_USES,
+            {"concept_key": make_key(workspace_id, path), "term_key": term_key},
+        )
+
+    def create_derived_from(self, *, workspace_id: str, path: str, term_key: str) -> None:
+        """Create a DERIVED_FROM edge from a concept to a Source term."""
+        client.query(
+            Q.CREATE_DERIVED_FROM,
+            {"concept_key": make_key(workspace_id, path), "term_key": term_key},
         )
 
     def delete_concept(self, *, workspace_id: str, path: str) -> None:

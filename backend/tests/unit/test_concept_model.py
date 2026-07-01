@@ -57,3 +57,32 @@ def test_links_ignore_external_and_anchors():
     body = "[ext](https://x.com) [anchor](#h) [rel](./y.md)"
     c = parse_concept("dir/a.md", "---\ntype: doc\n---\n" + body)
     assert c.links == ["dir/y.md"]
+
+
+def test_sources_parsed_from_comma_string():
+    content = (
+        "---\n"
+        "type: skill\n"
+        "sources: file.csv, weird\n"
+        "---\nbody\n"
+    )
+    c = parse_concept("skills/foo.md", content)
+    assert c.sources == ["file.csv", "weird"]
+
+
+def test_sources_parsed_from_yaml_list():
+    content = (
+        "---\n"
+        "type: skill\n"
+        "sources:\n"
+        "  - file.csv\n"
+        "  - database.postgres\n"
+        "---\nbody\n"
+    )
+    c = parse_concept("skills/bar.md", content)
+    assert c.sources == ["file.csv", "database.postgres"]
+
+
+def test_sources_defaults_to_empty():
+    c = parse_concept("skills/baz.md", "---\ntype: skill\n---\nbody\n")
+    assert c.sources == []

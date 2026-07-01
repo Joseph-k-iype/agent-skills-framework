@@ -13,6 +13,8 @@ class ConceptCreate(BaseModel):
     runtime: str | None = None  # free text
     tags: list[str] = Field(default_factory=list)
     capabilities: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    parent_path: str | None = None  # carried here; edge wired in Task 5
     body: str = ""
     frontmatter: dict = Field(default_factory=dict)  # extra/unknown keys preserved
 
@@ -24,6 +26,8 @@ class ConceptUpdate(BaseModel):
     runtime: str | None = None
     tags: list[str] | None = None
     capabilities: list[str] | None = None
+    sources: list[str] | None = None
+    parent_path: str | None = None  # carried here; edge wired in Task 5
     body: str | None = None
     frontmatter: dict | None = None
 
@@ -67,6 +71,8 @@ class ConceptOut(BaseModel):
     runtime: str | None = None
     tags: list[str] = Field(default_factory=list)
     capabilities: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    parent_path: str | None = None  # carried here; edge wired in Task 5
     body: str = ""
     frontmatter: dict = Field(default_factory=dict)
     links: list[str] = Field(default_factory=list)  # all md links in the body
@@ -83,3 +89,5 @@ class ConceptSummary(BaseModel):
     description: str | None = None
     runtime: str | None = None
     tags: list[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)

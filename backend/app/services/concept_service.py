@@ -25,7 +25,7 @@ from app.storage import paths
 from app.storage.repo import BundleRepo
 
 # Frontmatter keys we surface as first-class fields (everything else is extra).
-_KNOWN = ("type", "title", "description", "runtime", "tags", "capabilities")
+_KNOWN = ("type", "title", "description", "runtime", "tags", "capabilities", "sources")
 
 
 def _concept_path(folder_path: str, name: str) -> str:
@@ -63,6 +63,7 @@ class ConceptService:
             runtime=c.runtime,
             tags=c.tags,
             capabilities=c.capabilities,
+            sources=c.sources,
             body=c.body,
             frontmatter=extra,
             links=c.links,
@@ -96,6 +97,8 @@ class ConceptService:
                     description=c.description,
                     runtime=c.runtime,
                     tags=c.tags,
+                    capabilities=c.capabilities,
+                    sources=c.sources,
                 )
             )
         return out
@@ -263,6 +266,7 @@ class ConceptService:
         runtime: str | None,
         tags: list[str],
         capabilities: list[str],
+        sources: list[str] | None = None,
         body: str,
         frontmatter: dict,
     ) -> ConceptOut:
@@ -277,6 +281,7 @@ class ConceptService:
             "runtime": runtime,
             "tags": tags or None,
             "capabilities": capabilities or None,
+            "sources": sources or None,
             **frontmatter,
         }
         bundle.write_file(path, to_markdown(fields, body), f"create {path}", self.user.id)
@@ -302,6 +307,7 @@ class ConceptService:
         runtime: str | None = None,
         tags: list[str] | None = None,
         capabilities: list[str] | None = None,
+        sources: list[str] | None = None,
         body: str | None = None,
         frontmatter: dict | None = None,
     ) -> ConceptOut:
@@ -325,6 +331,8 @@ class ConceptService:
             merged["tags"] = tags
         if capabilities is not None:
             merged["capabilities"] = capabilities
+        if sources is not None:
+            merged["sources"] = sources
         new_body = current.body if body is None else body
 
         bundle.write_file(path, to_markdown(merged, new_body), f"update {path}", self.user.id)

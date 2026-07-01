@@ -17,6 +17,7 @@ from app.llm.provider import get_provider
 from app.okf.concept import Concept, parse_concept
 from app.okf.models import IngestionResult
 from app.repositories.concept_graph_repo import ConceptGraphRepository
+from app.repositories.taxonomy_repo import TaxonomyRepository
 from app.storage.repo import BundleRepo
 
 log = get_logger("index")
@@ -36,9 +37,15 @@ def is_reserved(path: str) -> bool:
     return PurePosixPath(path).name in _RESERVED
 
 
+def _display_label(key: str) -> str:
+    """Title-case the last dot-segment: 'extraction.table' → 'Table'."""
+    return key.split(".")[-1].title()
+
+
 class IndexService:
     def __init__(self) -> None:
         self.repo = ConceptGraphRepository()
+        self.taxonomy = TaxonomyRepository()
         self.provider = get_provider()
 
     def _load_concepts(self, bundle: BundleRepo) -> list[Concept]:
@@ -59,10 +66,36 @@ class IndexService:
             runtime=c.runtime,
             tags=c.tags,
             capabilities=c.capabilities,
+            sources=c.sources,
             body=c.body,
             content_hash=_hash(c.embedding_text()),
             ts=ts,
         )
+
+    async def _rebuild_taxonomy_edges(self, workspace_id: str, c: Concept) -> None:
+        """Clear then rebuild USES (→Capability) and DERIVED_FROM (→Source) edges.
+
+        Curated-open rule: unknown terms are auto-created as 'proposed'; existing
+        canonical terms are never downgraded.
+        """
+        self.repo.clear_uses_from(workspace_id=workspace_id, path=c.path)
+        self.repo.clear_derived_from_from(workspace_id=workspace_id, path=c.path)
+
+        for cap in c.capabilities:
+            existing = await self.taxonomy.get_term("Capability", cap)
+            if existing is None:
+                await self.taxonomy.upsert_term(
+                    "Capability", cap, _display_label(cap), None, "proposed", None
+                )
+            self.repo.create_uses(workspace_id=workspace_id, path=c.path, term_key=cap)
+
+        for src in c.sources:
+            existing = await self.taxonomy.get_term("Source", src)
+            if existing is None:
+                await self.taxonomy.upsert_term(
+                    "Source", src, _display_label(src), None, "proposed", None
+                )
+            self.repo.create_derived_from(workspace_id=workspace_id, path=c.path, term_key=src)
 
     async def reindex_workspace(self, workspace_id: str) -> IngestionResult:
         bundle = BundleRepo(workspace_id)
@@ -88,6 +121,7 @@ class IndexService:
                     ref_count += 1
                 else:
                     orphans.append(f"{c.path} -> {link}")
+            await self._rebuild_taxonomy_edges(workspace_id, c)
 
         embedded = 0
         if concepts:
@@ -140,6 +174,7 @@ class IndexService:
                 self.repo.create_reference(
                     workspace_id=workspace_id, from_path=c.path, to_path=link
                 )
+        await self._rebuild_taxonomy_edges(workspace_id, c)
         vec, is_real = await self.provider.embed_one_checked(c.embedding_text())
         if is_real:
             self.repo.set_embedding(workspace_id=workspace_id, path=path, vec=vec)
