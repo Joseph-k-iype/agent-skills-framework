@@ -8,6 +8,12 @@ vi.mock("mermaid", () => ({
   default: { initialize: vi.fn(), render: vi.fn().mockResolvedValue({ svg: "<svg></svg>" }) },
 }));
 
+vi.mock("@monaco-editor/react", () => ({
+  default: ({ value, onChange }: { value: string; onChange: (v?: string) => void }) => (
+    <textarea aria-label="monaco" value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
+
 const { updateMutate } = vi.hoisted(() => ({ updateMutate: vi.fn().mockResolvedValue({}) }));
 
 vi.mock("../api/taxonomyApi", () => ({
@@ -85,7 +91,7 @@ describe("ConceptEditorPage", () => {
   it("typing in the body updates the live preview", async () => {
     const user = userEvent.setup();
     renderEditor();
-    const body = screen.getByLabelText(/Concept body/i);
+    const body = screen.getByLabelText("monaco");
     await user.clear(body);
     await user.type(body, "# Hello Preview");
     expect(screen.getByRole("heading", { name: "Hello Preview" })).toBeInTheDocument();
