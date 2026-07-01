@@ -238,6 +238,9 @@ class MarketplaceRepository:
         by_kind: dict[str, int] = {r.kind: r.cnt for r in kind_rows}
 
         # ---- by_skill (join to listing for title) ----
+        # Inner-join intentionally excludes events with NULL listing_id; those are
+        # counted in `total`/`by_kind` but are not skill-scoped so they don't
+        # appear here (sum(by_skill[*].count) may be less than total).
         skill_rows = await self.db.execute(
             select(
                 UsageEvent.listing_id,

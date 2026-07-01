@@ -63,14 +63,42 @@ async def test_bad_key_authenticates_to_none(admin_id):
 
 @pytest.fixture
 async def second_user_id() -> str:
-    """Return a second user (not admin) to test ownership isolation."""
+    """Create a second user (not admin) in-test to verify ownership isolation.
+
+    We do NOT rely on a seeded 'developer' user so this test runs unconditionally
+    in CI without requiring ``make seed``.  The user is created with a unique
+    username derived from a UUID to avoid collisions with any existing seed data.
+    """
+    import uuid as _uuid
+    from sqlalchemy import delete
+    from app.core.security import hash_password
+    from app.models import User
     from app.repositories.user_repo import UserRepository
 
+    username = f"ci_second_user_{_uuid.uuid4().hex[:8]}"
+
     async with SessionLocal() as db:
-        user = await UserRepository(db).get_by_username("developer")
-        if user is None:
-            pytest.skip("'developer' user not in seed — run `make seed`")
-        return str(user.id)
+        repo = UserRepository(db)
+        # Resolve the 'developer' role (must already exist from seed or migrations)
+        role = await repo.get_role_by_name("developer")
+        assert role is not None, "Role 'developer' not found — ensure migrations/seed ran"
+        user = User(
+            username=username,
+            full_name="CI Second User",
+            hashed_password=hash_password("ci-test-pw"),
+            role_id=role.id,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        user_id = str(user.id)
+
+    yield user_id
+
+    # Teardown: remove the ephemeral user to keep the DB clean
+    async with SessionLocal() as db:
+        await db.execute(delete(User).where(User.username == username))
+        await db.commit()
 
 
 async def _seed_usage_events(admin_id: str, key_id: str, listing_id: str, count: int = 2) -> None:
