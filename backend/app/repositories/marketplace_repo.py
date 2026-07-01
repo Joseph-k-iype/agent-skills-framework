@@ -121,6 +121,75 @@ class MarketplaceRepository:
             .values(downloads=MarketplaceListing.downloads + 1)
         )
 
+    async def increment_clones(self, listing_id: uuid.UUID) -> None:
+        await self.db.execute(
+            update(MarketplaceListing)
+            .where(MarketplaceListing.id == listing_id)
+            .values(clones=MarketplaceListing.clones + 1)
+        )
+
+    async def uses_cumulative(
+        self, listing_id: uuid.UUID, days: int = 90
+    ) -> list[dict[str, Any]]:
+        """Cumulative-total ``apply`` uses over the last ``days`` days.
+
+        Returns an ordered ``[{"date": "YYYY-MM-DD", "cumulative": int}]`` series
+        where each point is ``offset + running_sum(daily counts up to that day)``.
+        ``offset`` is the number of ``apply`` events that occurred *before* the
+        window start, so the curve begins at the right height. A trailing point at
+        "today" is always appended so the series ends at the current total. Days
+        with no events are omitted (the frontend area chart interpolates). Empty
+        history (no apply events at all) returns ``[]``.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        window_start = now - timedelta(days=days)
+
+        # Pre-window offset: apply events strictly before the window.
+        offset = (
+            await self.db.scalar(
+                select(func.count(UsageEvent.id)).where(
+                    UsageEvent.listing_id == listing_id,
+                    UsageEvent.kind == "apply",
+                    UsageEvent.created_at < window_start,
+                )
+            )
+        ) or 0
+
+        # Daily buckets within the window.
+        day = func.date_trunc("day", UsageEvent.created_at)
+        rows = await self.db.execute(
+            select(day.label("day"), func.count(UsageEvent.id).label("cnt"))
+            .where(
+                UsageEvent.listing_id == listing_id,
+                UsageEvent.kind == "apply",
+                UsageEvent.created_at >= window_start,
+            )
+            .group_by(day)
+            .order_by(day)
+        )
+        buckets = [(r.day, r.cnt) for r in rows]
+
+        if offset == 0 and not buckets:
+            return []
+
+        series: list[dict[str, Any]] = []
+        running = offset
+        last_date: str | None = None
+        for d, cnt in buckets:
+            running += cnt
+            last_date = d.date().isoformat()
+            series.append({"date": last_date, "cumulative": running})
+
+        today = now.date().isoformat()
+        if last_date == today:
+            # Final bucket already lands on today.
+            pass
+        else:
+            series.append({"date": today, "cumulative": running})
+        return series
+
     async def add_usage(
         self,
         *,
