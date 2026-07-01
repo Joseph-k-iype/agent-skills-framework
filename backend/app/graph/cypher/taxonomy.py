@@ -71,17 +71,47 @@ RETURN t
 """
 
 # Repoint Concept USES/DERIVED_FROM edges that point at alias → into_key node,
+# reparent any same-label children of the alias to into,
 # then delete the alias node.  Returns nothing on success.
 REPOINT_AND_DELETE_ALIAS = """
 MATCH (alias:{label} {{key: $alias_key}})
 MATCH (into:{label}  {{key: $into_key}})
-OPTIONAL MATCH (c:Concept)-[r:USES|DERIVED_FROM]->(alias)
-FOREACH (rel IN CASE WHEN r IS NOT NULL THEN [r] ELSE [] END |
+
+// --- reparent hierarchy children (Fix I2) ---
+OPTIONAL MATCH (alias)-[pc:PARENT_OF]->(child:{label})
+FOREACH (rel IN CASE WHEN pc IS NOT NULL THEN [pc] ELSE [] END |
     DELETE rel
 )
-WITH alias, into, collect(c) AS concepts
-FOREACH (c IN concepts |
+WITH alias, into, collect(child) AS children
+FOREACH (ch IN children |
+    MERGE (into)-[:PARENT_OF]->(ch)
+)
+
+// --- repoint USES edges (Fix M4) ---
+WITH alias, into
+OPTIONAL MATCH (c1:Concept)-[r1:USES]->(alias)
+FOREACH (rel IN CASE WHEN r1 IS NOT NULL THEN [r1] ELSE [] END |
+    DELETE rel
+)
+WITH alias, into, collect(c1) AS uses_concepts
+
+FOREACH (c IN uses_concepts |
     MERGE (c)-[:USES]->(into)
 )
+
+// --- repoint DERIVED_FROM edges (Fix M4) ---
+WITH alias, into
+OPTIONAL MATCH (c2:Concept)-[r2:DERIVED_FROM]->(alias)
+FOREACH (rel IN CASE WHEN r2 IS NOT NULL THEN [r2] ELSE [] END |
+    DELETE rel
+)
+WITH alias, into, collect(c2) AS derived_concepts
+
+FOREACH (c IN derived_concepts |
+    MERGE (c)-[:DERIVED_FROM]->(into)
+)
+
+// --- delete the alias (no remaining edges due to explicit deletions above) ---
+WITH alias
 DETACH DELETE alias
 """

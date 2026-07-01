@@ -55,7 +55,7 @@ class TaxonomyService:
         """Create or update a term; wire hierarchy if parent_key provided."""
         self._check_label(label)
         return await self._repo.upsert_term(
-            label, key, label_text, description, "proposed", parent_key
+            label, key, label_text, description, "canonical", parent_key
         )
 
     async def promote(self, label: str, key: str) -> dict | None:
