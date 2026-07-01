@@ -38,6 +38,8 @@ class MarketplaceListing(Base, TimestampMixin):
     )
     version: Mapped[str]
     tags: Mapped[list] = mapped_column(JSONB, default=list)
+    capabilities: Mapped[list] = mapped_column(JSONB, default=list)
+    sources: Mapped[list] = mapped_column(JSONB, default=list)
     is_public: Mapped[bool] = mapped_column(default=True)
     downloads: Mapped[int] = mapped_column(default=0)
     category: Mapped[str | None] = mapped_column(default=None, index=True)

@@ -22,11 +22,17 @@ async def public_list(
     q: str | None = None,
     type: str | None = None,
     category: str | None = None,
+    capability: str | None = None,
+    source: str | None = None,
     sort: str = "uses",
     db: AsyncSession = Depends(get_db),
 ):
     svc = MarketplaceService(db, None)
-    return success(await svc.public_list(q=q, type=type, category=category, sort=sort))
+    return success(
+        await svc.public_list(
+            q=q, type=type, category=category, capability=capability, source=source, sort=sort
+        )
+    )
 
 
 @router.get("/marketplace/categories")

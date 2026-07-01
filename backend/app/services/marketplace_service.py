@@ -34,6 +34,8 @@ def _listing_dict(listing) -> dict:
         "runtime": listing.runtime,
         "version": listing.version,
         "tags": listing.tags or [],
+        "capabilities": listing.capabilities or [],
+        "sources": listing.sources or [],
         "downloads": listing.downloads,
         "author_id": str(listing.author_id) if listing.author_id else None,
         "created_at": listing.created_at.isoformat() if listing.created_at else None,
@@ -72,6 +74,8 @@ class MarketplaceService:
             type=concept.type,
             runtime=concept.runtime,
             tags=concept.tags,
+            capabilities=getattr(concept, "capabilities", []) or [],
+            sources=getattr(concept, "sources", []) or [],
             author_id=author,
         )
         sha = content_sha(concept.frontmatter, concept.body)
@@ -88,9 +92,20 @@ class MarketplaceService:
             await self.repo.set_latest(listing.id, n, sha)
 
     async def list_listings(
-        self, *, q: str | None, type: str | None, sort: str = "uses"
+        self,
+        *,
+        q: str | None,
+        type: str | None,
+        capability: str | None = None,
+        source: str | None = None,
+        sort: str = "uses",
     ) -> list[dict]:
-        return [_listing_dict(x) for x in await self.repo.list(q=q, type=type, sort=sort)]
+        return [
+            _listing_dict(x)
+            for x in await self.repo.list(
+                q=q, type=type, capability=capability, source=source, sort=sort
+            )
+        ]
 
     async def get_listing(self, listing_id: str) -> dict:
         listing = await self.repo.get(uuid.UUID(listing_id))
@@ -149,9 +164,19 @@ class MarketplaceService:
         }
 
     async def public_list(
-        self, *, q=None, type=None, category=None, sort="uses", limit=60
+        self,
+        *,
+        q=None,
+        type=None,
+        category=None,
+        capability: str | None = None,
+        source: str | None = None,
+        sort="uses",
+        limit=60,
     ) -> list[dict]:
-        rows = await self.repo.list(q=q, type=type, sort=sort, limit=limit)
+        rows = await self.repo.list(
+            q=q, type=type, capability=capability, source=source, sort=sort, limit=limit
+        )
         if category:
             rows = [r for r in rows if (r.category or r.type) == category]
         return [_listing_dict(x) for x in rows]

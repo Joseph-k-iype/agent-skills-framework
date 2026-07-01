@@ -16,11 +16,17 @@ router = APIRouter()
 async def list_listings(
     q: str | None = None,
     type: str | None = None,
+    capability: str | None = None,
+    source: str | None = None,
     sort: str = "uses",
     user: CurrentUser = Depends(require_permission("skill:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    return success(await MarketplaceService(db, user).list_listings(q=q, type=type, sort=sort))
+    return success(
+        await MarketplaceService(db, user).list_listings(
+            q=q, type=type, capability=capability, source=source, sort=sort
+        )
+    )
 
 
 @router.get("/{listing_id}")

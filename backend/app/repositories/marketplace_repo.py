@@ -25,6 +25,8 @@ class MarketplaceRepository:
         type: str | None,
         runtime: str | None,
         tags: list[str],
+        capabilities: list[str],
+        sources: list[str],
         author_id: uuid.UUID | None,
     ) -> MarketplaceListing:
         existing = await self.db.scalar(
@@ -40,6 +42,8 @@ class MarketplaceRepository:
             existing.type = type
             existing.runtime = runtime
             existing.tags = tags
+            existing.capabilities = capabilities
+            existing.sources = sources
             await self.db.flush()
             return existing
         row = MarketplaceListing(
@@ -51,6 +55,8 @@ class MarketplaceRepository:
             type=type,
             runtime=runtime,
             tags=tags,
+            capabilities=capabilities,
+            sources=sources,
             author_id=author_id,
         )
         self.db.add(row)
@@ -62,6 +68,8 @@ class MarketplaceRepository:
         *,
         q: str | None = None,
         type: str | None = None,
+        capability: str | None = None,
+        source: str | None = None,
         sort: str = "uses",
         limit: int = 100,
     ) -> list[MarketplaceListing]:
@@ -81,6 +89,17 @@ class MarketplaceRepository:
                     func.lower(MarketplaceListing.summary).like(like),
                     func.lower(cast(MarketplaceListing.tags, Text)).like(like),
                 )
+            )
+        if capability:
+            # JSONB array contains the value — mirror the tag cast pattern.
+            like = f"%{capability.lower()}%"
+            stmt = stmt.where(
+                func.lower(cast(MarketplaceListing.capabilities, Text)).like(like)
+            )
+        if source:
+            like = f"%{source.lower()}%"
+            stmt = stmt.where(
+                func.lower(cast(MarketplaceListing.sources, Text)).like(like)
             )
         order = {
             "recent": desc(MarketplaceListing.updated_at),
