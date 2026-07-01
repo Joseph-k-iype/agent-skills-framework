@@ -9,6 +9,7 @@ and the published content + tracks usage.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 from app.api.deps import CurrentUser
 from app.api.errors import NotFoundError
@@ -37,6 +38,7 @@ def _listing_dict(listing) -> dict:
         "capabilities": listing.capabilities or [],
         "sources": listing.sources or [],
         "downloads": listing.downloads,
+        "clones": listing.clones,
         "author_id": str(listing.author_id) if listing.author_id else None,
         "created_at": listing.created_at.isoformat() if listing.created_at else None,
         "category": listing.category,
@@ -232,6 +234,83 @@ class MarketplaceService:
             "type": listing.type,
             "content": version.content,
         }
+
+    async def uses_history(self, listing_id: str, days: int = 90) -> list[dict]:
+        """Cumulative-uses series for a public listing (404 if missing/not public)."""
+        listing = await self.repo.get(uuid.UUID(listing_id))
+        if not listing or not listing.is_public:
+            raise NotFoundError("Listing not found")
+        return await self.repo.uses_cumulative(listing.id, days=days)
+
+    async def clone_to_workspace(
+        self,
+        *,
+        listing_id: str,
+        workspace_id: str,
+        folder_path: str | None = None,
+        name: str | None = None,
+        version: int | None = None,
+    ) -> dict:
+        """Copy a published skill version into a workspace as a new concept.
+
+        Stamps provenance frontmatter, records the clone (counter + usage event),
+        and returns ``{workspace_id, path}`` of the created concept.
+        """
+        from datetime import datetime
+
+        from app.services.concept_service import ConceptService
+
+        listing = await self.repo.get(uuid.UUID(listing_id))
+        if not listing:
+            raise NotFoundError("Listing not found")
+
+        versions = await self.repo.list_versions(listing.id)
+        if version is not None:
+            chosen = next((v for v in versions if v.version == version), None)
+        else:
+            chosen = versions[0] if versions else None  # list_versions is desc → latest first
+
+        if chosen is not None and chosen.content:
+            raw = chosen.content
+            source_sha = chosen.content_sha
+        else:
+            # No immutable snapshot — fall back to the published bundle content.
+            raw = await self._read_published(listing)
+            source_sha = listing.latest_sha or ""
+        if not raw:
+            raise NotFoundError("Skill version content not found")
+
+        concept = parse_concept(listing.source_path, raw)
+        provenance = {
+            "source_listing_id": str(listing.id),
+            "source_sha": source_sha,
+            "cloned_from": listing.title,
+            "cloned_at": datetime.now(UTC).isoformat(),
+        }
+
+        cs = ConceptService(self.db, self.user)
+        created = await cs.create(
+            workspace_id=workspace_id,
+            folder_path=folder_path or "",
+            name=name or listing.title,
+            type=listing.type or "skill",
+            description=listing.summary,
+            runtime=listing.runtime,
+            tags=list(listing.tags or []),
+            capabilities=list(listing.capabilities or []),
+            sources=list(listing.sources or []),
+            body=concept.body,
+            frontmatter=provenance,
+        )
+
+        await self.repo.increment_clones(listing.id)
+        await self.repo.add_usage(
+            listing_id=listing.id,
+            user_id=uuid.UUID(self.user.id) if self.user else None,
+            kind="clone",
+            meta={"workspace_id": workspace_id, "version": chosen.version if chosen else None},
+        )
+        return {"workspace_id": workspace_id, "path": created.path}
 
     async def report_usage(
         self,

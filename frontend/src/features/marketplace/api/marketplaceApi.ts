@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { http, unwrap } from "@/shared/api/client";
 
 export interface Listing {
@@ -39,5 +39,30 @@ export function useListing(id: string | undefined) {
     queryKey: ["marketplace-listing", id],
     queryFn: () => unwrap<ListingDetail>(http.get(`/marketplace/${id}`)),
     enabled: !!id,
+  });
+}
+
+export interface CloneRequest {
+  workspace_id: string;
+  folder_path?: string;
+  name?: string;
+  version?: number;
+}
+
+export interface CloneResult {
+  workspace_id: string;
+  path: string;
+}
+
+export function useCloneListing(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CloneRequest) =>
+      unwrap<CloneResult>(http.post(`/marketplace/${id}/clone`, body)),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["public-listing", id] });
+      qc.invalidateQueries({ queryKey: ["marketplace-listing", id] });
+      qc.invalidateQueries({ queryKey: ["concepts", result.workspace_id] });
+    },
   });
 }

@@ -42,6 +42,7 @@ class MarketplaceListing(Base, TimestampMixin):
     sources: Mapped[list] = mapped_column(JSONB, default=list)
     is_public: Mapped[bool] = mapped_column(default=True)
     downloads: Mapped[int] = mapped_column(default=0)
+    clones: Mapped[int] = mapped_column(default=0)
     category: Mapped[str | None] = mapped_column(default=None, index=True)
     featured: Mapped[bool] = mapped_column(default=False, index=True)
     latest_sha: Mapped[str | None] = mapped_column(default=None)

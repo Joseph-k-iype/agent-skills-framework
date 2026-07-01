@@ -45,6 +45,13 @@ async def public_get(listing_id: str, db: AsyncSession = Depends(get_db)):
     return success(await MarketplaceService(db, None).public_get(listing_id))
 
 
+@router.get("/marketplace/{listing_id}/history")
+async def public_history(
+    listing_id: str, days: int = 90, db: AsyncSession = Depends(get_db)
+):
+    return success(await MarketplaceService(db, None).uses_history(listing_id, days=days))
+
+
 @router.get("/skills/{sha}")
 async def public_skill_by_sha(sha: str, db: AsyncSession = Depends(get_db)):
     return success(await MarketplaceService(db, None).public_fetch_by_sha(sha))
