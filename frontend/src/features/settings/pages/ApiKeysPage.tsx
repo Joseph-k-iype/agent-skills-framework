@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { tokens } from "@/app/theme/tokens";
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, type ApiKey } from "../api/apiKeysApi";
+import { KeyUsagePanel } from "../components/KeyUsagePanel";
 
 export default function ApiKeysPage() {
   const keys = useApiKeys();
@@ -48,6 +49,10 @@ export default function ApiKeysPage() {
         dataSource={keys.data ?? []}
         locale={{ emptyText: <Empty description="No API keys yet — create one to use the SDK" /> }}
         pagination={false}
+        expandable={{
+          expandedRowRender: (record: ApiKey) => <KeyUsagePanel keyId={record.id} />,
+          rowExpandable: () => true,
+        }}
         columns={[
           { title: "Name", dataIndex: "name", key: "name" },
           {

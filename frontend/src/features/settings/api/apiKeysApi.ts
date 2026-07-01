@@ -35,3 +35,31 @@ export function useRevokeApiKey() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["api-keys"] }),
   });
 }
+
+export interface KeyUsageSkill {
+  listing_id: string;
+  title: string;
+  count: number;
+}
+
+export interface KeyUsageEvent {
+  kind: string;
+  listing_id: string | null;
+  created_at: string;
+}
+
+export interface KeyUsage {
+  total: number;
+  last_used_at: string | null;
+  by_kind: Record<string, number>;
+  by_skill: KeyUsageSkill[];
+  recent: KeyUsageEvent[];
+}
+
+export function useKeyUsage(keyId: string) {
+  return useQuery({
+    queryKey: ["api-keys", keyId, "usage"],
+    queryFn: () => unwrap<KeyUsage>(http.get(`/api-keys/${keyId}/usage`)),
+    enabled: !!keyId,
+  });
+}
