@@ -104,3 +104,37 @@ async def test_offset_slices_are_disjoint_and_stable(setup, admin_id):
         # No id repeats across the three consecutive pages.
         seen = ids0 + ids1 + ids2
         assert len(seen) == len(set(seen)), f"pages overlap: {seen}"
+
+
+async def test_endpoint_pagination_and_clamp(setup, admin_id):
+    """GET /public/marketplace paginates via limit/offset and clamps out-of-range values."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+
+    async with SessionLocal() as db:
+        cs = ConceptService(db, _user(admin_id))
+        for i in range(4):
+            await _publish(cs, f"pg_ep_{i}", f"PageEp {i}", f"pageep-{i}.md")
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Page size 2, second page.
+        r0 = await ac.get("/api/v1/public/marketplace", params={"limit": 2, "offset": 0})
+        r1 = await ac.get("/api/v1/public/marketplace", params={"limit": 2, "offset": 2})
+        assert r0.status_code == 200 and r1.status_code == 200
+        ids0 = [x["id"] for x in r0.json()["data"]]
+        ids1 = [x["id"] for x in r1.json()["data"]]
+        assert len(ids0) == 2 and len(ids1) == 2
+        assert set(ids0).isdisjoint(set(ids1)), "consecutive pages must not overlap"
+
+        # limit above 60 is clamped to <= 60 rows returned.
+        big = await ac.get("/api/v1/public/marketplace", params={"limit": 500})
+        assert big.status_code == 200
+        assert len(big.json()["data"]) <= 60
+
+        # negative offset is treated as 0 (same first row as offset=0).
+        neg = await ac.get("/api/v1/public/marketplace", params={"limit": 2, "offset": -5})
+        assert neg.status_code == 200
+        assert [x["id"] for x in neg.json()["data"]] == ids0

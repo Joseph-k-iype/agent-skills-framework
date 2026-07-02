@@ -182,12 +182,18 @@ class MarketplaceService:
         source: str | None = None,
         sort="uses",
         limit=60,
+        offset=0,
     ) -> list[dict]:
         rows = await self.repo.list(
-            q=q, type=type, capability=capability, source=source, sort=sort, limit=limit
+            q=q,
+            type=type,
+            category=category,
+            capability=capability,
+            source=source,
+            sort=sort,
+            limit=limit,
+            offset=offset,
         )
-        if category:
-            rows = [r for r in rows if (r.category or r.type) == category]
         return [_listing_dict(x) for x in rows]
 
     async def public_categories(self) -> list[dict]:
