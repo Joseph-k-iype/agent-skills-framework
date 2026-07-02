@@ -1,10 +1,14 @@
 import { SearchOutlined } from "@ant-design/icons";
-import { Input, Skeleton } from "antd";
+import { Input } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { tokens } from "@/app/theme/tokens";
 import { GUTTER, RADIUS, storefrontType } from "@/features/marketplace/storefront";
-import { usePublicCategories, usePublicMarketplace, type SortKey } from "../api/publicMarketplaceApi";
-import { SkillCard } from "../components/SkillCard";
+import { GradientText } from "@/features/shared/fancy/GradientText";
+import { Magnetic } from "@/features/shared/fancy/Magnetic";
+import { usePublicCategories, type SortKey } from "../api/publicMarketplaceApi";
+import { InfiniteSkillGrid } from "../components/InfiniteSkillGrid";
+import { TopRankedBoard } from "../components/TopRankedBoard";
+import { TrendingMarquee } from "../components/TrendingMarquee";
 import { useTaxonomyTerms } from "@/features/concepts/api/taxonomyApi";
 
 const MASONRY_CLASS = "marketplace-masonry";
@@ -42,17 +46,19 @@ export default function MarketplacePage() {
   const categories = usePublicCategories();
   const capabilityTerms = useTaxonomyTerms("capabilities");
   const sourceTerms = useTaxonomyTerms("sources");
-  const listings = usePublicMarketplace(q, undefined, category, sort, capability, source);
-  const data = useMemo(() => listings.data ?? [], [listings.data]);
 
-  // Stable total across the whole catalog — does not fluctuate while
-  // typing/filtering, unlike the filtered `data.length` below. Falls back
-  // to the filtered count only until categories have loaded.
+  // Stable total across the whole catalog — sums the category counts.
   const totalCount = useMemo(() => {
     const cats = categories.data;
-    if (!cats || cats.length === 0) return data.length;
+    if (!cats || cats.length === 0) return 0;
     return cats.reduce((sum, c) => sum + c.count, 0);
-  }, [categories.data, data.length]);
+  }, [categories.data]);
+
+  // The leaderboard is a global "best of": show it only while browsing the
+  // default view — no search text and no facet/category selection. Gate on the
+  // immediate input (not the debounced query) so the board hides the moment the
+  // user starts typing.
+  const isBrowsingDefault = !qInput && !category && !capability && !source;
 
   return (
     <div style={{ paddingBottom: 60 }}>
@@ -64,10 +70,9 @@ export default function MarketplacePage() {
             margin: 0,
             font: `600 40px/1.15 ${tokens.font.sans}`,
             letterSpacing: "-0.02em",
-            color: tokens.color.ink,
           }}
         >
-          Find a data skill
+          <GradientText>Find a data skill</GradientText>
         </h1>
         <div
           style={{
@@ -79,26 +84,25 @@ export default function MarketplacePage() {
           {totalCount} skills · content-addressed
         </div>
 
-        <div
-          style={{
-            margin: "28px auto 0",
-            maxWidth: 560,
-          }}
-        >
-          <Input
-            allowClear
-            size="large"
-            prefix={<SearchOutlined style={{ color: tokens.color.ink3 }} aria-hidden />}
-            placeholder="Search skills…"
-            aria-label="Search skills"
-            value={qInput}
-            onChange={(e) => setQInput(e.target.value)}
-            style={{
-              borderRadius: RADIUS,
-              border: `1px solid ${tokens.color.line}`,
-              boxShadow: "none",
-            }}
-          />
+        <div style={{ margin: "28px auto 0", maxWidth: 560 }}>
+          <Magnetic strength={0.15}>
+            <div style={{ width: 560, maxWidth: "100%" }}>
+              <Input
+                allowClear
+                size="large"
+                prefix={<SearchOutlined style={{ color: tokens.color.ink3 }} aria-hidden />}
+                placeholder="Search skills…"
+                aria-label="Search skills"
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
+                style={{
+                  borderRadius: RADIUS,
+                  border: `1px solid ${tokens.color.line}`,
+                  boxShadow: "none",
+                }}
+              />
+            </div>
+          </Magnetic>
         </div>
 
         {/* Category filters — the active one carries the only red marker. */}
@@ -193,7 +197,13 @@ export default function MarketplacePage() {
         )}
       </div>
 
-      {/* Section header: eyebrow + count, sort toggle */}
+      {/* Trending category ribbon — clicking a chip sets the category filter. */}
+      <TrendingMarquee onPick={(c) => setCategory(c)} />
+
+      {/* Fixed leaderboard — only while browsing the default view. */}
+      {isBrowsingDefault && <TopRankedBoard />}
+
+      {/* Section header: eyebrow + sort toggle */}
       <div
         style={{
           display: "flex",
@@ -204,7 +214,7 @@ export default function MarketplacePage() {
           marginBottom: GUTTER,
         }}
       >
-        <span style={storefrontType.eyebrow}>EXPLORE · {data.length}</span>
+        <span style={storefrontType.eyebrow}>EXPLORE</span>
         <button
           type="button"
           onClick={() => setSort(sort === "uses" ? "recent" : "uses")}
@@ -222,45 +232,11 @@ export default function MarketplacePage() {
         </button>
       </div>
 
-      {/* Masonry wall */}
-      {listings.isLoading ? (
-        <div className={MASONRY_CLASS}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                breakInside: "avoid",
-                marginBottom: GUTTER,
-                background: tokens.color.surface,
-                border: `1px solid ${tokens.color.line}`,
-                borderRadius: RADIUS,
-                padding: 16,
-              }}
-            >
-              <Skeleton active paragraph={{ rows: 4 }} />
-            </div>
-          ))}
-        </div>
-      ) : data.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            color: tokens.color.ink3,
-            font: `400 13px ${tokens.font.sans}`,
-          }}
-        >
-          {q ? `No skills match "${q}".` : "No skills published yet."}
-        </div>
-      ) : (
-        <div className={MASONRY_CLASS}>
-          {data.map((listing) => (
-            <div key={listing.id} style={{ breakInside: "avoid", marginBottom: GUTTER }}>
-              <SkillCard listing={listing} />
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Lazy-loading results grid. */}
+      <InfiniteSkillGrid
+        params={{ q, type: undefined, category, sort, capability, source }}
+        masonryClass={MASONRY_CLASS}
+      />
     </div>
   );
 }
