@@ -70,14 +70,24 @@ class MarketplaceRepository:
         *,
         q: str | None = None,
         type: str | None = None,
+        category: str | None = None,
         capability: str | None = None,
         source: str | None = None,
         sort: str = "uses",
         limit: int = 100,
+        offset: int = 0,
     ) -> list[MarketplaceListing]:
         stmt = select(MarketplaceListing).where(MarketplaceListing.is_public.is_(True))
         if type:
             stmt = stmt.where(MarketplaceListing.type == type)
+        if category:
+            # Push category into SQL so pagination is sound. A listing with a NULL
+            # category falls back to its ``type`` (the same rule the categories
+            # facet and SkillCard use), via COALESCE.
+            stmt = stmt.where(
+                func.coalesce(MarketplaceListing.category, MarketplaceListing.type)
+                == category
+            )
         if q:
             like = f"%{q.lower()}%"
             # Match title OR summary OR any tag. ``tags`` is a JSONB array
@@ -109,7 +119,13 @@ class MarketplaceRepository:
             "recent": desc(MarketplaceListing.updated_at),
             "newest": desc(MarketplaceListing.created_at),
         }.get(sort, desc(MarketplaceListing.downloads))
-        stmt = stmt.order_by(order, desc(MarketplaceListing.created_at)).limit(limit)
+        # Stable secondary sort on ``id`` so offset paging can't skip/repeat rows
+        # that tie on the primary key (e.g. equal downloads).
+        stmt = (
+            stmt.order_by(order, MarketplaceListing.id)
+            .offset(offset)
+            .limit(limit)
+        )
         return list((await self.db.scalars(stmt)).all())
 
     async def get(self, listing_id: uuid.UUID) -> MarketplaceListing | None:

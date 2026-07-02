@@ -1,0 +1,46 @@
+/* Shared keyframes for the fancy motion library. Consumers gate these behind
+   prefers-reduced-motion in JS (they only attach the animating class when
+   motion is allowed), so no @media guard is strictly required here — but we
+   keep one as defense-in-depth for the global no-JS case. */
+
+@keyframes fancy-shimmer-pan {
+  0% { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+
+@keyframes fancy-gradient-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fancy-marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.fancy-shimmer {
+  background-size: 200% 100%;
+  animation: fancy-shimmer-pan 1.4s ease-in-out infinite;
+}
+
+.fancy-gradient {
+  background-size: 200% 200%;
+  animation: fancy-gradient-pan 6s ease infinite;
+}
+
+.fancy-marquee-track {
+  animation: fancy-marquee-scroll linear infinite;
+}
+
+.fancy-marquee--paused:hover .fancy-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fancy-shimmer,
+  .fancy-gradient,
+  .fancy-marquee-track {
+    animation: none !important;
+  }
+}

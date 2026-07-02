@@ -25,12 +25,24 @@ async def public_list(
     capability: str | None = None,
     source: str | None = None,
     sort: str = "uses",
+    limit: int = 60,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
+    # Clamp to bound query cost: at most 60 rows per page, non-negative offset.
+    limit = max(1, min(60, limit))
+    offset = max(0, offset)
     svc = MarketplaceService(db, None)
     return success(
         await svc.public_list(
-            q=q, type=type, category=category, capability=capability, source=source, sort=sort
+            q=q,
+            type=type,
+            category=category,
+            capability=capability,
+            source=source,
+            sort=sort,
+            limit=limit,
+            offset=offset,
         )
     )
 
